@@ -1,6 +1,7 @@
 # Torneos Americanos
 
 Aplicacion web para organizar torneos de padel tipo "americano" con:
+
 - fase de grupos,
 - ranking por diferencia de games,
 - desempates para BYEs,
@@ -64,26 +65,32 @@ http://localhost:3000
 ## Flujo funcional de la app
 
 1. Crear torneo (`/torneo/nuevo`):
+
 - define nombre, cantidad de parejas, formato de grupos y metodo de desempate.
 
 2. Fase de grupos (`/torneo/[id]/grupos`):
+
 - cargar resultados con formato `6-x` (x entre `0` y `5`).
 - en grupos de 4, la ronda 2 se genera automaticamente al completar ronda 1.
 
 3. Ranking (`/torneo/[id]/ranking`):
+
 - orden por `diff` (GF-GC) y luego `GF`.
 - deteccion de empates solo cuando afectan el corte de BYEs.
 
 4. Desempate (`/torneo/[id]/desempate`):
+
 - resolucion por `MONEDA` o `TIEBREAK` segun configuracion.
 - cuando no quedan desempates pendientes, vuelve a estado `RANKING`.
 
 5. Bracket (`/torneo/[id]/bracket`):
+
 - genera cuadro (potencia de 2) con seedings.
 - evita cruces de rivales de grupo en primera ronda cuando hay swap valido.
 - progresion automatica entre rondas.
 
 6. Finalizacion:
+
 - cuando se completa la final, el torneo pasa a `FINALIZADO` (solo lectura).
 
 ## Reglas de negocio importantes
@@ -97,6 +104,7 @@ http://localhost:3000
 ## API (resumen)
 
 Todas las rutas responden en formato:
+
 - exito: `{ success: true, data: ... }`
 - error: `{ success: false, error: string }`
 
@@ -118,12 +126,3 @@ Todas las rutas responden en formato:
 - `src/lib/tournament-service.ts`: orquestacion de casos de uso con DB
 - `src/lib/bracket-progression.ts`: sincronizacion de avance de cuadro
 - `prisma/schema.prisma`: modelo de datos
-
-## Estado actual verificado
-
-En este estado del repositorio:
-- `npm test` -> 23 tests OK
-- `npm run lint` -> OK
-- `npm run build` -> OK
-
-Nota: el build usa `next/font` con Google Fonts; sin acceso a internet puede fallar la descarga de fuentes.
