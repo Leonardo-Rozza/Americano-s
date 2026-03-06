@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+:root {
+  --bg: #0a0e1a;
+  --surface: #111827;
+  --surface-2: #162133;
+  --border: #1e2d44;
+  --accent: #3b82f6;
+  --gold: #f59e0b;
+  --green: #10b981;
+  --red: #ef4444;
+  --purple: #8b5cf6;
+  --text: #f1f5f9;
+  --text-muted: #94a3b8;
+  --text-dim: #64748b;
+}
+
+@theme inline {
+  --font-sans: var(--font-barlow);
+  --font-mono: var(--font-jetbrains-mono);
+}
+
+html {
+  color-scheme: dark;
+}
+
+body {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(circle at 15% 0%, rgb(59 130 246 / 0.2) 0%, transparent 36%),
+    radial-gradient(circle at 85% 100%, rgb(139 92 246 / 0.14) 0%, transparent 30%),
+    linear-gradient(180deg, #0a0e1a 0%, #090d17 100%);
+  color: var(--text);
+  font-family: var(--font-barlow), sans-serif;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+button,
+input,
+select,
+textarea {
+  touch-action: manipulation;
+}
+
+a {
+  color: inherit;
+}
+
+::selection {
+  background: rgb(59 130 246 / 0.35);
+}
+
+@keyframes coinSpin {
+  0% {
+    transform: rotateY(0deg);
+  }
+  100% {
+    transform: rotateY(3600deg);
+  }
+}
+
+.coin {
+  display: grid;
+  place-items: center;
+  font-size: 2rem;
+  font-weight: 800;
+  color: #4b3206;
+  background: radial-gradient(circle at 25% 25%, #fde68a 0%, #f59e0b 55%, #b45309 100%);
+  transform-style: preserve-3d;
+}
+
+.coin-spinning {
+  animation: coinSpin 2s linear forwards;
+}
+
+.coin-done {
+  background: radial-gradient(circle at 30% 30%, #6ee7b7 0%, #10b981 60%, #047857 100%);
+  color: #042f2e;
+}

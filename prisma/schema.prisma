@@ -1,0 +1,137 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum TipoTorneo {
+  AMERICANO
+  LARGO
+}
+
+enum EstadoTorneo {
+  CONFIGURACION
+  GRUPOS
+  RANKING
+  DESEMPATE
+  ELIMINATORIA
+  FINALIZADO
+}
+
+enum MetodoDesempate {
+  MONEDA
+  TIEBREAK
+}
+
+enum FaseGrupo {
+  RONDA1
+  RONDA2
+}
+
+model Torneo {
+  id              String           @id @default(cuid())
+  nombre          String
+  tipo            TipoTorneo
+  estado          EstadoTorneo     @default(CONFIGURACION)
+  cantidadCanchas Int              @default(2)
+  metodoDesempate MetodoDesempate
+  fecha           DateTime
+  createdAt       DateTime         @default(now())
+  updatedAt       DateTime         @updatedAt
+  parejas         Pareja[]
+  grupos          Grupo[]
+  bracket         Bracket?
+  desempates      Desempate[]
+}
+
+model Pareja {
+  id               String         @id @default(cuid())
+  torneoId         String
+  grupoId          String?
+  nombre           String
+  jugador1         String?
+  jugador2         String?
+  seed             Int?
+  torneo           Torneo         @relation(fields: [torneoId], references: [id], onDelete: Cascade)
+  grupo            Grupo?         @relation(fields: [grupoId], references: [id], onDelete: SetNull)
+  partidosComoP1   PartidoGrupo[] @relation("PartidoGrupoPareja1")
+  partidosComoP2   PartidoGrupo[] @relation("PartidoGrupoPareja2")
+  bracketComoP1    BracketMatch[] @relation("BracketMatchPareja1")
+  bracketComoP2    BracketMatch[] @relation("BracketMatchPareja2")
+  bracketGanados   BracketMatch[] @relation("BracketMatchGanador")
+  desempatesComoP1 Desempate[]    @relation("DesempatePareja1")
+  desempatesComoP2 Desempate[]    @relation("DesempatePareja2")
+  desempatesGanado Desempate[]    @relation("DesempateGanador")
+}
+
+model Grupo {
+  id       String        @id @default(cuid())
+  torneoId String
+  nombre   String
+  torneo   Torneo        @relation(fields: [torneoId], references: [id], onDelete: Cascade)
+  parejas  Pareja[]
+  partidos PartidoGrupo[]
+}
+
+model PartidoGrupo {
+  id           String    @id @default(cuid())
+  grupoId      String
+  fase         FaseGrupo
+  orden        Int
+  pareja1Id    String
+  pareja2Id    String
+  gamesPareja1 Int?
+  gamesPareja2 Int?
+  completado   Boolean   @default(false)
+  grupo        Grupo     @relation(fields: [grupoId], references: [id], onDelete: Cascade)
+  pareja1      Pareja    @relation("PartidoGrupoPareja1", fields: [pareja1Id], references: [id], onDelete: Restrict)
+  pareja2      Pareja    @relation("PartidoGrupoPareja2", fields: [pareja2Id], references: [id], onDelete: Restrict)
+
+  @@unique([grupoId, fase, orden])
+}
+
+model Bracket {
+  id          String         @id @default(cuid())
+  torneoId    String         @unique
+  tamano      Int
+  totalRondas Int
+  torneo      Torneo         @relation(fields: [torneoId], references: [id], onDelete: Cascade)
+  matches     BracketMatch[]
+}
+
+model BracketMatch {
+  id           String   @id @default(cuid())
+  bracketId    String
+  ronda        Int
+  posicion     Int
+  esBye        Boolean  @default(false)
+  pareja1Id    String?
+  pareja2Id    String?
+  ganadorId    String?
+  gamesPareja1 Int?
+  gamesPareja2 Int?
+  completado   Boolean  @default(false)
+  bracket      Bracket  @relation(fields: [bracketId], references: [id], onDelete: Cascade)
+  pareja1      Pareja?  @relation("BracketMatchPareja1", fields: [pareja1Id], references: [id], onDelete: SetNull)
+  pareja2      Pareja?  @relation("BracketMatchPareja2", fields: [pareja2Id], references: [id], onDelete: SetNull)
+  ganador      Pareja?  @relation("BracketMatchGanador", fields: [ganadorId], references: [id], onDelete: SetNull)
+
+  @@unique([bracketId, ronda, posicion])
+}
+
+model Desempate {
+  id        String          @id @default(cuid())
+  torneoId  String
+  pareja1Id String
+  pareja2Id String
+  ganadorId String?
+  metodo    MetodoDesempate
+  resuelto  Boolean         @default(false)
+  torneo    Torneo          @relation(fields: [torneoId], references: [id], onDelete: Cascade)
+  pareja1   Pareja          @relation("DesempatePareja1", fields: [pareja1Id], references: [id], onDelete: Restrict)
+  pareja2   Pareja          @relation("DesempatePareja2", fields: [pareja2Id], references: [id], onDelete: Restrict)
+  ganador   Pareja?         @relation("DesempateGanador", fields: [ganadorId], references: [id], onDelete: SetNull)
+}
