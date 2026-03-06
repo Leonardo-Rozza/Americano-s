@@ -1,22 +1,19 @@
-"use client";
+'use client';
 
-import { useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
-import { calcGroups, listGroupConfigs } from "@/lib/tournament-engine/groups";
-import { getBracketSize } from "@/lib/tournament-engine/bracket";
-import { useToast } from "@/components/ui/ToastProvider";
+import { useToast } from '@/components/ui/ToastProvider';
+import { getBracketSize } from '@/lib/tournament-engine/bracket';
+import { calcGroups, listGroupConfigs } from '@/lib/tournament-engine/groups';
+import { useRouter } from 'next/navigation';
+import { useMemo, useState } from 'react';
 
 const MIN_PAREJAS = 6;
 const MAX_PAREJAS = 30;
 
-function createDefaultNames(total: number) {
-  return Array.from({ length: total }, (_, idx) => `Pareja ${idx + 1}`);
+function createEmptyNames(total: number) {
+  return Array.from({ length: total }, () => '');
 }
 
-function sameFormat(
-  a: { g3: number; g4: number },
-  b: { g3: number; g4: number },
-) {
+function sameFormat(a: { g3: number; g4: number }, b: { g3: number; g4: number }) {
   return a.g3 === b.g3 && a.g4 === b.g4;
 }
 
@@ -27,12 +24,12 @@ function formatLabel(config: { g3: number; g4: number }) {
 export function NewTournamentForm() {
   const router = useRouter();
   const { showToast } = useToast();
-  const [nombre, setNombre] = useState("Americano");
+  const [nombre, setNombre] = useState('Americano');
   const [numParejas, setNumParejas] = useState(12);
   const [groupConfig, setGroupConfig] = useState(() => calcGroups(12));
-  const [metodo, setMetodo] = useState<"MONEDA" | "TIEBREAK">("MONEDA");
+  const [metodo, setMetodo] = useState<'MONEDA' | 'TIEBREAK'>('MONEDA');
   const [useNames, setUseNames] = useState(false);
-  const [nombres, setNombres] = useState<string[]>(createDefaultNames(12));
+  const [nombres, setNombres] = useState<string[]>(createEmptyNames(12));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,12 +47,20 @@ export function NewTournamentForm() {
     const nextOptions = listGroupConfigs(value);
     if (nextOptions.length > 0) {
       setGroupConfig((current) =>
-        nextOptions.some((option) => sameFormat(option, current)) ? current : nextOptions[0],
+        nextOptions.some((option) => sameFormat(option, current)) ? current : nextOptions[0]
       );
     }
-    setNombres((current) =>
-      Array.from({ length: value }, (_, idx) => current[idx] ?? `Pareja ${idx + 1}`),
-    );
+    setNombres((current) => Array.from({ length: value }, (_, idx) => current[idx] ?? ''));
+  }
+
+  function handleToggleUseNames() {
+    setUseNames((current) => {
+      const next = !current;
+      if (next) {
+        setNombres(createEmptyNames(numParejas));
+      }
+      return next;
+    });
   }
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -73,9 +78,9 @@ export function NewTournamentForm() {
     };
 
     try {
-      const response = await fetch("/api/torneo", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
+      const response = await fetch('/api/torneo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
 
@@ -85,14 +90,14 @@ export function NewTournamentForm() {
 
       if (!payload.success) {
         setError(payload.error);
-        showToast({ message: payload.error, tone: "error" });
+        showToast({ message: payload.error, tone: 'error' });
         return;
       }
 
       router.push(`/torneo/${payload.data.id}/grupos`);
     } catch {
-      setError("No se pudo crear el torneo.");
-      showToast({ message: "No se pudo crear el torneo.", tone: "error" });
+      setError('No se pudo crear el torneo.');
+      showToast({ message: 'No se pudo crear el torneo.', tone: 'error' });
     } finally {
       setSubmitting(false);
     }
@@ -100,20 +105,22 @@ export function NewTournamentForm() {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
-      <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
-        <label className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-dim)]">
+      <section className="rounded-2xl border border-(--border) bg-(--surface) p-5">
+        <label className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-(--text-dim)">
           Nombre del torneo
         </label>
         <input
           value={nombre}
           onChange={(event) => setNombre(event.target.value)}
           required
-          className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[var(--text)] outline-none focus:border-[var(--accent)]"
+          className="w-full rounded-xl border border-(--border) bg-(--surface-2) px-3 py-2 text-(--text) outline-none focus:border-(--accent)"
         />
       </section>
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
-        <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-dim)]">Cantidad de parejas</p>
+        <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-dim)]">
+          Cantidad de parejas
+        </p>
         <div className="mt-4 flex items-center justify-center gap-5">
           <button
             type="button"
@@ -122,7 +129,9 @@ export function NewTournamentForm() {
           >
             -
           </button>
-          <span className="min-w-24 text-center font-mono text-5xl font-black text-[var(--accent)]">{numParejas}</span>
+          <span className="min-w-24 text-center font-mono text-5xl font-black text-[var(--accent)]">
+            {numParejas}
+          </span>
           <button
             type="button"
             onClick={() => updateCount(numParejas + 1)}
@@ -154,13 +163,13 @@ export function NewTournamentForm() {
                   onClick={() => setGroupConfig(option)}
                   className={`rounded-xl border px-3 py-2 text-left transition ${
                     active
-                      ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--text)]"
-                      : "border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-muted)]"
+                      ? 'border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--text)]'
+                      : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-muted)]'
                   }`}
                 >
                   <p className="text-sm font-bold">{formatLabel(option)}</p>
                   <p className="text-xs text-[var(--text-dim)]">
-                    {option.g4 > 0 ? "Incluye grupos de 4 (con Ronda 2)." : "Solo grupos de 3."}
+                    {option.g4 > 0 ? 'Incluye grupos de 4 (con Ronda 2).' : 'Solo grupos de 3.'}
                   </p>
                 </button>
               );
@@ -194,22 +203,22 @@ export function NewTournamentForm() {
         <div className="grid gap-3 sm:grid-cols-2">
           <button
             type="button"
-            onClick={() => setMetodo("MONEDA")}
+            onClick={() => setMetodo('MONEDA')}
             className={`rounded-xl border px-4 py-3 text-left font-semibold transition ${
-              metodo === "MONEDA"
-                ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--text)]"
-                : "border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-muted)]"
+              metodo === 'MONEDA'
+                ? 'border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--text)]'
+                : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-muted)]'
             }`}
           >
             🪙 Moneda
           </button>
           <button
             type="button"
-            onClick={() => setMetodo("TIEBREAK")}
+            onClick={() => setMetodo('TIEBREAK')}
             className={`rounded-xl border px-4 py-3 text-left font-semibold transition ${
-              metodo === "TIEBREAK"
-                ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--text)]"
-                : "border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-muted)]"
+              metodo === 'TIEBREAK'
+                ? 'border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--text)]'
+                : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-muted)]'
             }`}
           >
             🎾 Tie-break
@@ -219,17 +228,19 @@ export function NewTournamentForm() {
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
         <div className="mb-4 flex items-center justify-between">
-          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-dim)]">Nombres de parejas</p>
+          <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-dim)]">
+            Nombres de parejas
+          </p>
           <button
             type="button"
-            onClick={() => setUseNames((value) => !value)}
+            onClick={handleToggleUseNames}
             className={`rounded-lg border px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] ${
               useNames
-                ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--text)]"
-                : "border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-muted)]"
+                ? 'border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--text)]'
+                : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-muted)]'
             }`}
           >
-            {useNames ? "Personalizados" : "Genericos"}
+            {useNames ? 'Personalizados' : 'Genericos'}
           </button>
         </div>
 
@@ -242,7 +253,7 @@ export function NewTournamentForm() {
                 required
                 onChange={(event) =>
                   setNombres((current) =>
-                    current.map((name, i) => (i === idx ? event.target.value : name)),
+                    current.map((name, i) => (i === idx ? event.target.value : name))
                   )
                 }
                 placeholder={`Pareja ${idx + 1}`}
@@ -251,7 +262,9 @@ export function NewTournamentForm() {
             ))}
           </div>
         ) : (
-          <p className="text-sm text-[var(--text-muted)]">Se usarán nombres automáticos (Pareja 1, Pareja 2...).</p>
+          <p className="text-sm text-[var(--text-muted)]">
+            Se usarán nombres automáticos (Pareja 1, Pareja 2...).
+          </p>
         )}
       </section>
 
@@ -262,7 +275,7 @@ export function NewTournamentForm() {
         disabled={submitting}
         className="h-12 w-full rounded-xl border border-[var(--accent)] bg-[var(--accent)] text-base font-extrabold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
       >
-        {submitting ? "Creando…" : "Crear Torneo"}
+        {submitting ? 'Creando…' : 'Crear Torneo'}
       </button>
     </form>
   );
