@@ -4,6 +4,7 @@ import { createGroups, getFixtureR1, getFixtureR2 } from "@/lib/tournament-engin
 import { computeRanking, detectTiebreaks } from "@/lib/tournament-engine/ranking";
 import type { GrupoConfig, MatchResult, Round1Result } from "@/lib/tournament-engine/types";
 import { ApiError } from "@/lib/api";
+import { buildGenericPairName, buildPairName, resolvePairDisplayName, type PairMode } from "@/lib/pair-utils";
 
 export const torneoFullInclude = {
   parejas: { orderBy: { nombre: "asc" } },
@@ -158,7 +159,10 @@ export async function computeTorneoRanking(tx: Prisma.TransactionClient, torneoI
     throw new ApiError("Torneo no encontrado.", 404);
   }
 
-  const pairs = torneo.parejas.map((pair) => ({ id: pair.id, nombre: pair.nombre }));
+  const pairs = torneo.parejas.map((pair) => ({
+    id: pair.id,
+    nombre: resolvePairDisplayName(pair),
+  }));
   const results = collectGroupResults(torneo.grupos);
   const ranking = computeRanking(pairs, results);
   const byes = getBracketSize(pairs.length) - pairs.length;
@@ -173,7 +177,8 @@ export async function createTorneoWithGroups(
     nombre: string;
     numParejas: number;
     metodoDesempate: "MONEDA" | "TIEBREAK";
-    pairNames: string[];
+    pairMode: PairMode;
+    pairPlayers?: Array<{ jugador1: string; jugador2: string }>;
     groupConfig?: GrupoConfig;
   },
 ) {
@@ -188,14 +193,34 @@ export async function createTorneoWithGroups(
   });
 
   const createdPairs = [];
-  for (const pairName of input.pairNames) {
-    const pair = await tx.pareja.create({
-      data: {
-        torneoId: torneo.id,
-        nombre: pairName,
-      },
-    });
-    createdPairs.push(pair);
+  if (input.pairMode === "GENERIC") {
+    for (let idx = 0; idx < input.numParejas; idx += 1) {
+      const pair = await tx.pareja.create({
+        data: {
+          torneoId: torneo.id,
+          nombre: buildGenericPairName(idx + 1),
+          jugador1: null,
+          jugador2: null,
+        },
+      });
+      createdPairs.push(pair);
+    }
+  } else {
+    if (!input.pairPlayers || input.pairPlayers.length !== input.numParejas) {
+      throw new ApiError("Debes enviar exactamente numParejas parejas en modo personalizado.", 400);
+    }
+
+    for (const pairPlayers of input.pairPlayers) {
+      const pair = await tx.pareja.create({
+        data: {
+          torneoId: torneo.id,
+          jugador1: pairPlayers.jugador1,
+          jugador2: pairPlayers.jugador2,
+          nombre: buildPairName(pairPlayers.jugador1, pairPlayers.jugador2),
+        },
+      });
+      createdPairs.push(pair);
+    }
   }
 
   const shuffledGroups = createGroups(

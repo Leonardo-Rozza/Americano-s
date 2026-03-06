@@ -2,26 +2,67 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { ApiError, fromUnknownError, ok, parseJson } from "@/lib/api";
 import { getTorneoOrThrow } from "@/lib/tournament-service";
+import { areSamePlayers, buildGenericPairName, buildPairName, isValidPlayerName } from "@/lib/pair-utils";
 
 type RouteParams = { params: Promise<{ id: string }> };
+const pairUpdateSchema = z
+  .object({
+    id: z.string().trim().min(1),
+    jugador1: z.string().trim().min(1, "Nombre 1 es obligatorio."),
+    jugador2: z.string().trim().min(1, "Nombre 2 es obligatorio."),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (!isValidPlayerName(value.jugador1)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["jugador1"],
+        message: "Nombre 1 tiene formato invalido.",
+      });
+    }
+    if (!isValidPlayerName(value.jugador2)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["jugador2"],
+        message: "Nombre 2 tiene formato invalido.",
+      });
+    }
+    if (areSamePlayers(value.jugador1, value.jugador2)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["jugador2"],
+        message: "Nombre 1 y Nombre 2 no pueden ser iguales.",
+      });
+    }
+  });
+
 const updateTorneoSchema = z
   .object({
     nombre: z.string().trim().min(1).optional(),
     metodoDesempate: z.enum(["MONEDA", "TIEBREAK"]).optional(),
-    parejas: z
-      .array(
-        z.object({
-          id: z.string().trim().min(1),
-          nombre: z.string().trim().min(1),
-        }),
-      )
-      .optional(),
+    pairMode: z.enum(["CUSTOM", "GENERIC"]).optional(),
+    parejas: z.array(pairUpdateSchema).optional(),
   })
+  .strict()
   .superRefine((value, ctx) => {
-    if (!value.nombre && !value.metodoDesempate && !value.parejas) {
+    if (!value.nombre && !value.metodoDesempate && !value.parejas && !value.pairMode) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Debes enviar al menos un campo para actualizar.",
+      });
+    }
+
+    if (value.pairMode === "CUSTOM" && !value.parejas) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "En modo personalizado debes enviar parejas.",
+      });
+    }
+
+    if (value.pairMode === "GENERIC" && value.parejas) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "No debes enviar parejas manuales en modo generico.",
       });
     }
   });
@@ -118,6 +159,9 @@ export async function PUT(request: Request, { params }: RouteParams) {
         }
       }
 
+      const effectivePairMode =
+        parsed.data.pairMode ?? (parsed.data.parejas ? "CUSTOM" : undefined);
+
       const torneoData: {
         nombre?: string;
         metodoDesempate?: "MONEDA" | "TIEBREAK";
@@ -142,11 +186,29 @@ export async function PUT(request: Request, { params }: RouteParams) {
         });
       }
 
-      if (parsed.data.parejas) {
+      if (effectivePairMode === "GENERIC") {
+        for (let idx = 0; idx < torneo.parejas.length; idx += 1) {
+          const pair = torneo.parejas[idx];
+          await tx.pareja.update({
+            where: { id: pair.id },
+            data: {
+              jugador1: null,
+              jugador2: null,
+              nombre: buildGenericPairName(idx + 1),
+            },
+          });
+        }
+      }
+
+      if (effectivePairMode === "CUSTOM" && parsed.data.parejas) {
         for (const pair of parsed.data.parejas) {
           await tx.pareja.update({
             where: { id: pair.id },
-            data: { nombre: pair.nombre },
+            data: {
+              jugador1: pair.jugador1,
+              jugador2: pair.jugador2,
+              nombre: buildPairName(pair.jugador1, pair.jugador2),
+            },
           });
         }
       }

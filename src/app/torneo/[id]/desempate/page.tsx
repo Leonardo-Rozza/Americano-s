@@ -4,6 +4,7 @@ import { collectGroupResults } from "@/lib/tournament-service";
 import { computeRanking, detectTiebreaks } from "@/lib/tournament-engine/ranking";
 import { getBracketSize } from "@/lib/tournament-engine/bracket";
 import { DesempateClient } from "@/components/tournament/DesempateClient";
+import { resolvePairDisplayName } from "@/lib/pair-utils";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -30,7 +31,7 @@ export default async function DesempatePage({ params }: RouteParams) {
     notFound();
   }
 
-  const pairs = torneo.parejas.map((pair) => ({ id: pair.id, nombre: pair.nombre }));
+  const pairs = torneo.parejas.map((pair) => ({ id: pair.id, nombre: resolvePairDisplayName(pair) }));
   const ranking = computeRanking(pairs, collectGroupResults(torneo.grupos));
   const byes = getBracketSize(pairs.length) - pairs.length;
   const tiebreaks = detectTiebreaks(ranking, byes);

@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "backfill:parejas": "node prisma/backfill-parejas.mjs"
   },
   "dependencies": {
     "@prisma/client": "^6.16.0",

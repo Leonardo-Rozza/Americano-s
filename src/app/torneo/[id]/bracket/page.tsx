@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { BracketClient } from "@/components/tournament/BracketClient";
 import { GoToBracketButton } from "@/components/tournament/GoToBracketButton";
+import { resolvePairDisplayName } from "@/lib/pair-utils";
 
 type RouteParams = { params: Promise<{ id: string }> };
 type RouteSearchParams = { searchParams: Promise<{ view?: string }> };
@@ -16,7 +17,7 @@ export default async function BracketPage({ params, searchParams }: RouteParams 
     where: { id },
     include: {
       parejas: {
-        select: { id: true, nombre: true },
+        select: { id: true, nombre: true, jugador1: true, jugador2: true },
       },
       bracket: {
         include: {
@@ -40,7 +41,7 @@ export default async function BracketPage({ params, searchParams }: RouteParams 
         <BracketClient
           torneoId={id}
           torneoNombre={torneo.nombre}
-          pairs={torneo.parejas}
+          pairs={torneo.parejas.map((pair) => ({ id: pair.id, nombre: resolvePairDisplayName(pair) }))}
           readOnly={publicView || torneo.estado === "FINALIZADO"}
           bracket={{
             id: torneo.bracket.id,

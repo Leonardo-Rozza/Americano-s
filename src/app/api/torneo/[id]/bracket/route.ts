@@ -4,6 +4,7 @@ import { buildBracket, getBracketSize } from "@/lib/tournament-engine/bracket";
 import { areAllGroupMatchesComplete, collectGroupResults, makeGroupRivals } from "@/lib/tournament-service";
 import { computeRanking } from "@/lib/tournament-engine/ranking";
 import { syncBracketProgression } from "@/lib/bracket-progression";
+import { resolvePairDisplayName } from "@/lib/pair-utils";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -43,7 +44,7 @@ export async function POST(_: Request, { params }: RouteParams) {
       }
 
       const ranking = computeRanking(
-        torneo.parejas.map((pair) => ({ id: pair.id, nombre: pair.nombre })),
+        torneo.parejas.map((pair) => ({ id: pair.id, nombre: resolvePairDisplayName(pair) })),
         collectGroupResults(torneo.grupos),
       );
       const rankedPairs = ranking.map((entry) => entry.pareja);

@@ -67,6 +67,9 @@ http://localhost:3000
 1. Crear torneo (`/torneo/nuevo`):
 
 - define nombre, cantidad de parejas, formato de grupos y metodo de desempate.
+- permite elegir modo de parejas:
+  - `Personalizadas`: `Nombre 1` + `Nombre 2`.
+  - `Genericas`: `Pareja 1`, `Pareja 2`, etc.
 
 2. Fase de grupos (`/torneo/[id]/grupos`):
 
@@ -108,9 +111,9 @@ Todas las rutas responden en formato:
 - exito: `{ success: true, data: ... }`
 - error: `{ success: false, error: string }`
 
-- `POST /api/torneo`: crear torneo y grupos iniciales.
+- `POST /api/torneo`: crear torneo y grupos iniciales (recibe `pairMode` y opcionalmente `parejas[]`).
 - `GET /api/torneo/[id]`: obtener torneo completo.
-- `PUT /api/torneo/[id]`: editar nombre, metodo y nombres de parejas.
+- `PUT /api/torneo/[id]`: editar nombre, metodo y modo/estructura de parejas.
 - `DELETE /api/torneo/[id]`: eliminar torneo completo.
 - `PUT /api/torneo/[id]/resultado-grupo`: guardar score de partido de grupos.
 - `POST /api/torneo/[id]/ranking`: calcular ranking y generar desempates pendientes.
@@ -126,3 +129,13 @@ Todas las rutas responden en formato:
 - `src/lib/tournament-service.ts`: orquestacion de casos de uso con DB
 - `src/lib/bracket-progression.ts`: sincronizacion de avance de cuadro
 - `prisma/schema.prisma`: modelo de datos
+
+## Compatibilidad de datos legacy
+
+Si tenes registros viejos con solo `nombre` y `jugador1/jugador2` en `NULL`, podes ejecutar:
+
+```bash
+npm run backfill:parejas
+```
+
+El script intenta parsear `nombre` con separadores `" - "` y `" / "`. Si no puede resolver un registro, lo deja sin romper nada y lo lista para revision manual.

@@ -3,6 +3,37 @@ import { db } from "@/lib/db";
 import { fail, fromUnknownError, ok, parseJson } from "@/lib/api";
 import { createTorneoWithGroups, getTorneoOrThrow } from "@/lib/tournament-service";
 import { isValidGroupConfig } from "@/lib/tournament-engine/groups";
+import { areSamePlayers, isValidPlayerName } from "@/lib/pair-utils";
+
+const pairInputSchema = z
+  .object({
+    jugador1: z.string().trim().min(1, "Nombre 1 es obligatorio."),
+    jugador2: z.string().trim().min(1, "Nombre 2 es obligatorio."),
+  })
+  .strict()
+  .superRefine((value, ctx) => {
+    if (!isValidPlayerName(value.jugador1)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["jugador1"],
+        message: "Nombre 1 tiene formato invalido.",
+      });
+    }
+    if (!isValidPlayerName(value.jugador2)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["jugador2"],
+        message: "Nombre 2 tiene formato invalido.",
+      });
+    }
+    if (areSamePlayers(value.jugador1, value.jugador2)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["jugador2"],
+        message: "Nombre 1 y Nombre 2 no pueden ser iguales.",
+      });
+    }
+  });
 
 const createTorneoSchema = z
   .object({
@@ -13,8 +44,8 @@ const createTorneoSchema = z
       .min(6, "Se requieren al menos 6 parejas.")
       .max(30, "El maximo permitido es 30 parejas."),
     metodoDesempate: z.enum(["MONEDA", "TIEBREAK"]),
-    useNames: z.boolean(),
-    nombres: z.array(z.string().trim().min(1)).optional(),
+    pairMode: z.enum(["CUSTOM", "GENERIC"]).default("CUSTOM"),
+    parejas: z.array(pairInputSchema).optional(),
     formatoGrupos: z
       .object({
         g3: z.number().int().min(0),
@@ -22,11 +53,21 @@ const createTorneoSchema = z
       })
       .optional(),
   })
+  .strict()
   .superRefine((value, ctx) => {
-    if (value.useNames && (!value.nombres || value.nombres.length !== value.numParejas)) {
+    if (value.pairMode === "CUSTOM") {
+      if (!value.parejas || value.parejas.length !== value.numParejas) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: "Debes enviar exactamente numParejas parejas en modo personalizado.",
+        });
+      }
+    }
+
+    if (value.pairMode === "GENERIC" && value.parejas) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Si useNames=true, nombres debe tener exactamente numParejas elementos.",
+        message: "No debes enviar parejas manuales en modo generico.",
       });
     }
 
@@ -45,16 +86,13 @@ export async function POST(request: Request) {
       return parsed.response;
     }
 
-    const pairNames = parsed.data.useNames
-      ? parsed.data.nombres!
-      : Array.from({ length: parsed.data.numParejas }, (_, idx) => `Pareja ${idx + 1}`);
-
     const torneoId = await db.$transaction((tx) =>
       createTorneoWithGroups(tx, {
         nombre: parsed.data.nombre,
         numParejas: parsed.data.numParejas,
         metodoDesempate: parsed.data.metodoDesempate,
-        pairNames,
+        pairMode: parsed.data.pairMode,
+        pairPlayers: parsed.data.parejas,
         groupConfig: parsed.data.formatoGrupos,
       }),
     );

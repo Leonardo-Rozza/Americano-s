@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { GroupStageClient } from "@/components/tournament/GroupStageClient";
+import { resolvePairDisplayName } from "@/lib/pair-utils";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -31,7 +32,13 @@ export default async function GruposPage({ params }: RouteParams) {
       torneo={{
         id: torneo.id,
         nombre: torneo.nombre,
-        grupos: torneo.grupos,
+        grupos: torneo.grupos.map((group) => ({
+          ...group,
+          parejas: group.parejas.map((pair) => ({
+            id: pair.id,
+            nombre: resolvePairDisplayName(pair),
+          })),
+        })),
       }}
       readOnly={torneo.estado === "FINALIZADO"}
     />
