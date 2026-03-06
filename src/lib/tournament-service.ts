@@ -68,6 +68,20 @@ export function collectGroupResults(
   );
 }
 
+export function areAllGroupMatchesComplete(
+  groups: Array<{
+    partidos: Array<{
+      completado: boolean;
+    }>;
+  }>,
+): boolean {
+  if (groups.length === 0) {
+    return false;
+  }
+
+  return groups.every((group) => group.partidos.length > 0 && group.partidos.every((match) => match.completado));
+}
+
 export async function generateRound2IfNeeded(tx: Prisma.TransactionClient, grupoId: string) {
   const group = await tx.grupo.findUnique({
     where: { id: grupoId },

@@ -34,6 +34,9 @@ export async function POST(request: Request, { params }: RouteParams) {
       if (!torneo) {
         throw new ApiError("Torneo no encontrado.", 404);
       }
+      if (torneo.estado === "FINALIZADO") {
+        throw new ApiError("El torneo esta finalizado y es solo lectura.", 409);
+      }
 
       const data = parsed.data;
       const resolvedById = "desempateId" in data;

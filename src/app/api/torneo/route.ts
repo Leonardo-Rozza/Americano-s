@@ -7,7 +7,11 @@ import { isValidGroupConfig } from "@/lib/tournament-engine/groups";
 const createTorneoSchema = z
   .object({
     nombre: z.string().trim().min(1, "El nombre es requerido."),
-    numParejas: z.number().int().min(3, "Se requieren al menos 3 parejas."),
+    numParejas: z
+      .number()
+      .int()
+      .min(6, "Se requieren al menos 6 parejas.")
+      .max(30, "El maximo permitido es 30 parejas."),
     metodoDesempate: z.enum(["MONEDA", "TIEBREAK"]),
     useNames: z.boolean(),
     nombres: z.array(z.string().trim().min(1)).optional(),

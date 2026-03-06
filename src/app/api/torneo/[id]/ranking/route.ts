@@ -1,6 +1,6 @@
 import { db } from "@/lib/db";
-import { fromUnknownError, ok } from "@/lib/api";
-import { computeTorneoRanking } from "@/lib/tournament-service";
+import { ApiError, fromUnknownError, ok } from "@/lib/api";
+import { areAllGroupMatchesComplete, computeTorneoRanking } from "@/lib/tournament-service";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -9,6 +9,12 @@ export async function POST(_: Request, { params }: RouteParams) {
     const { id } = await params;
     const payload = await db.$transaction(async (tx) => {
       const { torneo, ranking, tiebreaks } = await computeTorneoRanking(tx, id);
+      if (torneo.estado === "FINALIZADO") {
+        throw new ApiError("El torneo esta finalizado y es solo lectura.", 409);
+      }
+      if (!areAllGroupMatchesComplete(torneo.grupos)) {
+        throw new ApiError("Debes completar todos los partidos de grupos antes de calcular el ranking.", 409);
+      }
 
       const desempates: Array<{ id: string; pareja1Id: string; pareja2Id: string }> = [];
       await tx.desempate.deleteMany({
