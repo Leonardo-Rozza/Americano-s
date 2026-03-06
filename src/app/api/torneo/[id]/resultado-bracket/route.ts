@@ -48,6 +48,17 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     const payload = await db.$transaction(async (tx) => {
+      const torneo = await tx.torneo.findUnique({
+        where: { id },
+        select: { estado: true },
+      });
+      if (!torneo) {
+        throw new ApiError("Torneo no encontrado.", 404);
+      }
+      if (torneo.estado === "FINALIZADO") {
+        throw new ApiError("El torneo esta finalizado y es solo lectura.", 409);
+      }
+
       const match = await tx.bracketMatch.findUnique({
         where: { id: parsed.data.matchId },
         include: { bracket: true },

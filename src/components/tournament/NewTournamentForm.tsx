@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { calcGroups } from "@/lib/tournament-engine/groups";
+import { calcGroups, listGroupConfigs } from "@/lib/tournament-engine/groups";
 import { getBracketSize } from "@/lib/tournament-engine/bracket";
 import { useToast } from "@/components/ui/ToastProvider";
 
@@ -13,27 +13,46 @@ function createDefaultNames(total: number) {
   return Array.from({ length: total }, (_, idx) => `Pareja ${idx + 1}`);
 }
 
+function sameFormat(
+  a: { g3: number; g4: number },
+  b: { g3: number; g4: number },
+) {
+  return a.g3 === b.g3 && a.g4 === b.g4;
+}
+
+function formatLabel(config: { g3: number; g4: number }) {
+  return `${config.g3}x3 + ${config.g4}x4`;
+}
+
 export function NewTournamentForm() {
   const router = useRouter();
   const { showToast } = useToast();
   const [nombre, setNombre] = useState("Americano");
   const [numParejas, setNumParejas] = useState(12);
+  const [groupConfig, setGroupConfig] = useState(() => calcGroups(12));
   const [metodo, setMetodo] = useState<"MONEDA" | "TIEBREAK">("MONEDA");
   const [useNames, setUseNames] = useState(false);
   const [nombres, setNombres] = useState<string[]>(createDefaultNames(12));
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const groupOptions = useMemo(() => listGroupConfigs(numParejas), [numParejas]);
+
   const preview = useMemo(() => {
-    const groups = calcGroups(numParejas);
     const bracketSize = getBracketSize(numParejas);
     const byes = bracketSize - numParejas;
-    return { ...groups, bracketSize, byes };
-  }, [numParejas]);
+    return { ...groupConfig, bracketSize, byes };
+  }, [groupConfig, numParejas]);
 
   function updateCount(next: number) {
     const value = Math.max(MIN_PAREJAS, Math.min(MAX_PAREJAS, next));
     setNumParejas(value);
+    const nextOptions = listGroupConfigs(value);
+    if (nextOptions.length > 0) {
+      setGroupConfig((current) =>
+        nextOptions.some((option) => sameFormat(option, current)) ? current : nextOptions[0],
+      );
+    }
     setNombres((current) =>
       Array.from({ length: value }, (_, idx) => current[idx] ?? `Pareja ${idx + 1}`),
     );
@@ -50,6 +69,7 @@ export function NewTournamentForm() {
       metodoDesempate: metodo,
       useNames,
       nombres: useNames ? nombres : undefined,
+      formatoGrupos: groupConfig,
     };
 
     try {
@@ -119,6 +139,34 @@ export function NewTournamentForm() {
           onChange={(event) => updateCount(Number(event.target.value))}
           className="mt-4 w-full accent-[var(--accent)]"
         />
+
+        <div className="mt-5">
+          <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-dim)]">
+            Formato de grupos
+          </p>
+          <div className="grid gap-2 sm:grid-cols-2">
+            {groupOptions.map((option) => {
+              const active = sameFormat(option, groupConfig);
+              return (
+                <button
+                  key={`${option.g3}-${option.g4}`}
+                  type="button"
+                  onClick={() => setGroupConfig(option)}
+                  className={`rounded-xl border px-3 py-2 text-left transition ${
+                    active
+                      ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--text)]"
+                      : "border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-muted)]"
+                  }`}
+                >
+                  <p className="text-sm font-bold">{formatLabel(option)}</p>
+                  <p className="text-xs text-[var(--text-dim)]">
+                    {option.g4 > 0 ? "Incluye grupos de 4 (con Ronda 2)." : "Solo grupos de 3."}
+                  </p>
+                </button>
+              );
+            })}
+          </div>
+        </div>
       </section>
 
       <section className="grid gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:grid-cols-3">

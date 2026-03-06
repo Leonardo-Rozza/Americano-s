@@ -2,7 +2,7 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 import { getBracketSize } from "@/lib/tournament-engine/bracket";
 import { createGroups, getFixtureR1, getFixtureR2 } from "@/lib/tournament-engine/groups";
 import { computeRanking, detectTiebreaks } from "@/lib/tournament-engine/ranking";
-import type { MatchResult, Round1Result } from "@/lib/tournament-engine/types";
+import type { GrupoConfig, MatchResult, Round1Result } from "@/lib/tournament-engine/types";
 import { ApiError } from "@/lib/api";
 
 export const torneoFullInclude = {
@@ -160,6 +160,7 @@ export async function createTorneoWithGroups(
     numParejas: number;
     metodoDesempate: "MONEDA" | "TIEBREAK";
     pairNames: string[];
+    groupConfig?: GrupoConfig;
   },
 ) {
   const torneo = await tx.torneo.create({
@@ -183,7 +184,10 @@ export async function createTorneoWithGroups(
     createdPairs.push(pair);
   }
 
-  const shuffledGroups = createGroups(createdPairs.map((pair) => ({ id: pair.id, nombre: pair.nombre })));
+  const shuffledGroups = createGroups(
+    createdPairs.map((pair) => ({ id: pair.id, nombre: pair.nombre })),
+    input.groupConfig,
+  );
   for (let idx = 0; idx < shuffledGroups.length; idx += 1) {
     const groupName = String.fromCharCode(65 + idx);
     const group = await tx.grupo.create({

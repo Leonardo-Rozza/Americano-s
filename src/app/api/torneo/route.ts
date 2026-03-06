@@ -2,6 +2,7 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { fail, fromUnknownError, ok, parseJson } from "@/lib/api";
 import { createTorneoWithGroups, getTorneoOrThrow } from "@/lib/tournament-service";
+import { isValidGroupConfig } from "@/lib/tournament-engine/groups";
 
 const createTorneoSchema = z
   .object({
@@ -10,12 +11,25 @@ const createTorneoSchema = z
     metodoDesempate: z.enum(["MONEDA", "TIEBREAK"]),
     useNames: z.boolean(),
     nombres: z.array(z.string().trim().min(1)).optional(),
+    formatoGrupos: z
+      .object({
+        g3: z.number().int().min(0),
+        g4: z.number().int().min(0),
+      })
+      .optional(),
   })
   .superRefine((value, ctx) => {
     if (value.useNames && (!value.nombres || value.nombres.length !== value.numParejas)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Si useNames=true, nombres debe tener exactamente numParejas elementos.",
+      });
+    }
+
+    if (value.formatoGrupos && !isValidGroupConfig(value.numParejas, value.formatoGrupos)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El formato de grupos no es valido para la cantidad de parejas seleccionada.",
       });
     }
   });
@@ -37,6 +51,7 @@ export async function POST(request: Request) {
         numParejas: parsed.data.numParejas,
         metodoDesempate: parsed.data.metodoDesempate,
         pairNames,
+        groupConfig: parsed.data.formatoGrupos,
       }),
     );
 

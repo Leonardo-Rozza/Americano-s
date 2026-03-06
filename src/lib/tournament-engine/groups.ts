@@ -1,28 +1,40 @@
 import type { GrupoConfig, Pareja, Round1Result } from "./types";
 
-export function calcGroups(n: number): GrupoConfig {
+export function listGroupConfigs(n: number): GrupoConfig[] {
   if (n < 0) {
     throw new Error("La cantidad de parejas no puede ser negativa.");
   }
 
   if (n === 0) {
-    return { g3: 0, g4: 0 };
+    return [{ g3: 0, g4: 0 }];
   }
 
-  const remainder = n % 3;
-  if (remainder === 0) {
-    return { g3: n / 3, g4: 0 };
-  }
-  if (remainder === 1) {
-    if (n < 4) {
-      throw new Error("No se pueden formar grupos validos con menos de 4 parejas.");
+  const configs: GrupoConfig[] = [];
+  for (let g4 = 0; g4 <= Math.floor(n / 4); g4 += 1) {
+    const rem = n - g4 * 4;
+    if (rem < 0 || rem % 3 !== 0) {
+      continue;
     }
-    return { g3: (n - 4) / 3, g4: 1 };
+    const g3 = rem / 3;
+    if (g3 < 0 || g3 + g4 <= 0) {
+      continue;
+    }
+    configs.push({ g3, g4 });
   }
-  if (n < 8) {
+
+  return configs.sort((a, b) => a.g4 - b.g4 || a.g3 - b.g3);
+}
+
+export function isValidGroupConfig(n: number, config: GrupoConfig): boolean {
+  return listGroupConfigs(n).some((item) => item.g3 === config.g3 && item.g4 === config.g4);
+}
+
+export function calcGroups(n: number): GrupoConfig {
+  const options = listGroupConfigs(n);
+  if (options.length === 0) {
     throw new Error("No se pueden formar grupos validos con este numero de parejas.");
   }
-  return { g3: (n - 8) / 3, g4: 2 };
+  return options[0];
 }
 
 function shuffle<T>(input: T[]): T[] {
@@ -34,8 +46,13 @@ function shuffle<T>(input: T[]): T[] {
   return out;
 }
 
-export function createGroups(parejas: Pareja[]): Pareja[][] {
-  const { g3, g4 } = calcGroups(parejas.length);
+export function createGroups(parejas: Pareja[], selectedConfig?: GrupoConfig): Pareja[][] {
+  const config = selectedConfig ?? calcGroups(parejas.length);
+  if (!isValidGroupConfig(parejas.length, config)) {
+    throw new Error("La configuracion de grupos no es valida para esta cantidad de parejas.");
+  }
+
+  const { g3, g4 } = config;
   const sizes = [...Array<number>(g4).fill(4), ...Array<number>(g3).fill(3)];
   const shuffled = shuffle(parejas);
   const groups: Pareja[][] = [];

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { isValidMatchScore, mergeScoresKeepingDrafts } from "../score-utils";
+import { isValidMatchScore, mergeScoresKeepingDrafts, parseDraftScore } from "../score-utils";
 
 describe("score-utils", () => {
   it("acepta solo resultados cerrados a 6", () => {
@@ -28,5 +28,13 @@ describe("score-utils", () => {
       b: { s1: "4", s2: "3" },
       c: { s1: "1", s2: "" },
     });
+  });
+
+  it("parsea drafts sin convertir vacio en cero", () => {
+    expect(parseDraftScore("6")).toBe(6);
+    expect(parseDraftScore("0")).toBe(0);
+    expect(parseDraftScore("")).toBeNull();
+    expect(parseDraftScore(undefined)).toBeNull();
+    expect(parseDraftScore("8")).toBeNull();
   });
 });

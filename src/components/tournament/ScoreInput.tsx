@@ -5,9 +5,11 @@ type ScoreInputProps = {
   onChange: (value: string) => void;
   disabled?: boolean;
   ariaLabel?: string;
+  onBlur?: () => void;
+  name?: string;
 };
 
-export function ScoreInput({ value, onChange, disabled, ariaLabel }: ScoreInputProps) {
+export function ScoreInput({ value, onChange, disabled, ariaLabel, onBlur, name }: ScoreInputProps) {
   function setDelta(delta: number) {
     const current = Number(value);
     const base = Number.isInteger(current) ? current : 0;
@@ -19,11 +21,14 @@ export function ScoreInput({ value, onChange, disabled, ariaLabel }: ScoreInputP
     <input
       value={value}
       aria-label={ariaLabel}
+      name={name}
       disabled={disabled}
       type="text"
       inputMode="numeric"
       pattern="[0-6]"
-      autoComplete="off"
+      autoComplete="new-password"
+      autoCorrect="off"
+      spellCheck={false}
       maxLength={1}
       className="h-10 w-10 rounded-md border border-[var(--border)] bg-[var(--surface-2)] text-center font-mono text-lg font-bold text-[var(--text)] outline-none transition focus-visible:border-[var(--accent)] focus-visible:ring-2 focus-visible:ring-[var(--accent)]/30 disabled:cursor-not-allowed disabled:opacity-60"
       onFocus={(event) => {
@@ -47,6 +52,7 @@ export function ScoreInput({ value, onChange, disabled, ariaLabel }: ScoreInputP
         }
         onChange(raw);
       }}
+      onBlur={onBlur}
     />
   );
 }

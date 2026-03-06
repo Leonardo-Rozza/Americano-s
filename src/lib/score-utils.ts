@@ -16,6 +16,13 @@ export function isValidMatchScore(games1: number, games2: number): boolean {
   return (games1 === 6 && games2 <= 5) || (games2 === 6 && games1 <= 5);
 }
 
+export function parseDraftScore(raw: string | undefined): number | null {
+  if (!raw || !/^[0-6]$/.test(raw)) {
+    return null;
+  }
+  return Number(raw);
+}
+
 export function mergeScoresKeepingDrafts(
   prev: DraftScores,
   matches: ServerScoreMatch[],

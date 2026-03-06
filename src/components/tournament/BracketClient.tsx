@@ -1,10 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { ScoreInput } from "@/components/tournament/ScoreInput";
 import { useToast } from "@/components/ui/ToastProvider";
-import { isValidMatchScore, mergeScoresKeepingDrafts } from "@/lib/score-utils";
+import { isValidMatchScore, mergeScoresKeepingDrafts, parseDraftScore } from "@/lib/score-utils";
 
 type Pair = {
   id: string;
@@ -37,9 +37,19 @@ type BracketClientProps = {
   bracket: BracketData;
   readOnly?: boolean;
 };
+type MatchSaveState = "idle" | "dirty" | "saving" | "saved" | "error";
+type MatchSaveStateMap = Record<string, MatchSaveState>;
 
 function initScores(matches: Match[]) {
   return mergeScoresKeepingDrafts({}, matches);
+}
+
+function initMatchSaveState(matches: Match[]): MatchSaveStateMap {
+  const out: MatchSaveStateMap = {};
+  for (const match of matches) {
+    out[match.id] = match.completado ? "saved" : "idle";
+  }
+  return out;
 }
 
 function roundLabel(matchesInRound: number, round: number, totalRounds: number) {
@@ -62,6 +72,11 @@ export function BracketClient({
   const pairById = useMemo(() => Object.fromEntries(pairs.map((pair) => [pair.id, pair])), [pairs]);
   const [bracket, setBracket] = useState(initialBracket);
   const [scores, setScores] = useState(initScores(initialBracket.matches));
+  const scoresRef = useRef(scores);
+  const bracketRef = useRef(bracket);
+  const [matchSaveState, setMatchSaveState] = useState<MatchSaveStateMap>(
+    initMatchSaveState(initialBracket.matches),
+  );
   const [savingMatch, setSavingMatch] = useState<string | null>(null);
 
   const rounds = useMemo(() => {
@@ -77,6 +92,26 @@ export function BracketClient({
 
   const finalMatch = rounds[rounds.length - 1]?.matches[0];
   const champion = finalMatch?.completado && finalMatch.ganadorId ? pairById[finalMatch.ganadorId] : null;
+
+  useEffect(() => {
+    scoresRef.current = scores;
+  }, [scores]);
+
+  useEffect(() => {
+    bracketRef.current = bracket;
+  }, [bracket]);
+
+  useEffect(() => {
+    setMatchSaveState((current) => {
+      const next = { ...current };
+      for (const match of bracket.matches) {
+        if (!next[match.id]) {
+          next[match.id] = match.completado ? "saved" : "idle";
+        }
+      }
+      return next;
+    });
+  }, [bracket.matches]);
 
   function applyOptimisticBracket(match: Match, s1: number, s2: number) {
     const winnerId = s1 > s2 ? match.pareja1Id : match.pareja2Id;
@@ -108,26 +143,45 @@ export function BracketClient({
     };
   }
 
-  async function saveResult(match: Match, explicit?: { s1: number; s2: number }) {
-    const s1 = explicit?.s1 ?? Number(scores[match.id]?.s1);
-    const s2 = explicit?.s2 ?? Number(scores[match.id]?.s2);
-    if (!Number.isInteger(s1) || !Number.isInteger(s2)) {
-      showToast({ message: "Completa ambos scores.", tone: "error" });
+  function saveOnBlur(match: Match) {
+    void saveResult(match, undefined, { quietValidation: true });
+  }
+
+  async function saveResult(
+    match: Match,
+    explicit?: { s1: number; s2: number },
+    options?: { quietValidation?: boolean },
+  ) {
+    if (readOnly) {
+      return;
+    }
+    const source = scoresRef.current;
+    const s1 = explicit?.s1 ?? parseDraftScore(source[match.id]?.s1);
+    const s2 = explicit?.s2 ?? parseDraftScore(source[match.id]?.s2);
+    if (s1 === null || s2 === null) {
+      setMatchSaveState((current) => ({ ...current, [match.id]: "dirty" }));
+      if (!options?.quietValidation) {
+        showToast({ message: "Completa ambos scores.", tone: "error" });
+      }
       return;
     }
     if (!isValidMatchScore(s1, s2)) {
-      showToast({ message: "Resultado invalido. Debe ser 6-x (x entre 0 y 5).", tone: "error" });
+      setMatchSaveState((current) => ({ ...current, [match.id]: "dirty" }));
+      if (!options?.quietValidation) {
+        showToast({ message: "Resultado invalido. Debe ser 6-x (x entre 0 y 5).", tone: "error" });
+      }
       return;
     }
 
-    const prevBracket = bracket;
-    const prevScores = scores;
+    const prevBracket = bracketRef.current;
+    const prevScores = scoresRef.current;
 
     setBracket(applyOptimisticBracket(match, s1, s2));
     setScores((current) => ({
       ...current,
       [match.id]: { s1: String(s1), s2: String(s2) },
     }));
+    setMatchSaveState((current) => ({ ...current, [match.id]: "saving" }));
     setSavingMatch(match.id);
     try {
       const response = await fetch(`/api/torneo/${torneoId}/resultado-bracket`, {
@@ -147,6 +201,7 @@ export function BracketClient({
       if (!payload.success) {
         setBracket(prevBracket);
         setScores(prevScores);
+        setMatchSaveState((current) => ({ ...current, [match.id]: "error" }));
         showToast({
           message: payload.error,
           tone: "error",
@@ -163,9 +218,11 @@ export function BracketClient({
         matches: payload.data.matches,
       });
       setScores((current) => mergeScoresKeepingDrafts(current, payload.data.matches));
+      setMatchSaveState((current) => ({ ...current, [match.id]: "saved" }));
     } catch {
       setBracket(prevBracket);
       setScores(prevScores);
+      setMatchSaveState((current) => ({ ...current, [match.id]: "error" }));
       showToast({
         message: "No se pudo guardar el resultado.",
         tone: "error",
@@ -219,12 +276,33 @@ export function BracketClient({
                     const p2 = match.pareja2Id ? pairById[match.pareja2Id] : null;
                     const byeOnly = match.esBye && (p1 || p2) && !(p1 && p2);
                     const unresolved = !p1 || !p2;
-                    const score1 = Number(scores[match.id]?.s1);
-                    const score2 = Number(scores[match.id]?.s2);
-                    const canSave =
-                      Number.isInteger(score1) &&
-                      Number.isInteger(score2) &&
-                      isValidMatchScore(score1, score2);
+                    const state = matchSaveState[match.id] ?? (match.completado ? "saved" : "idle");
+                    const stateStyle =
+                      readOnly
+                        ? "border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)]"
+                        : state === "saving"
+                        ? "border-[var(--accent)]/60 bg-[var(--accent)]/15 text-[var(--accent)]"
+                        : state === "saved"
+                          ? "border-[var(--green)]/60 bg-[var(--green)]/15 text-[var(--green)]"
+                          : state === "error"
+                            ? "border-[var(--red)]/60 bg-[var(--red)]/15 text-[var(--red)]"
+                            : state === "dirty"
+                              ? "border-[var(--gold)]/60 bg-[var(--gold)]/15 text-[var(--gold)]"
+                              : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-dim)]";
+                    const stateLabel =
+                      readOnly
+                        ? match.completado
+                          ? "Final"
+                          : "Pendiente"
+                        : state === "saving"
+                        ? "Guardando…"
+                        : state === "saved"
+                          ? "Guardado"
+                          : state === "error"
+                            ? "Error"
+                            : state === "dirty"
+                              ? "Sin guardar"
+                              : "Pendiente";
 
                     return (
                       <div key={match.id} style={{ marginTop: matchIndex === 0 ? 0 : gap }}>
@@ -270,29 +348,34 @@ export function BracketClient({
                                     </span>
                                     <ScoreInput
                                       value={idx === 0 ? scores[match.id]?.s1 ?? "" : scores[match.id]?.s2 ?? ""}
+                                      name={`bracket-${match.id}-p${idx + 1}`}
                                       ariaLabel={`Score ${pair.nombre} ronda ${roundBlock.round}`}
                                       disabled={readOnly || savingMatch === match.id}
-                                      onChange={(value) =>
+                                      onChange={(value) => {
                                         setScores((current) => ({
                                           ...current,
                                           [match.id]:
                                             idx === 0
                                               ? { s1: value, s2: current[match.id]?.s2 ?? "" }
                                               : { s1: current[match.id]?.s1 ?? "", s2: value },
-                                        }))
-                                      }
+                                        }));
+                                        setMatchSaveState((current) => ({ ...current, [match.id]: "dirty" }));
+                                      }}
+                                      onBlur={() => {
+                                        if (!readOnly) {
+                                          saveOnBlur(match);
+                                        }
+                                      }}
                                     />
                                   </div>
                                 );
                               })}
                               {!readOnly ? (
-                                <button
-                                  onClick={() => saveResult(match)}
-                                  disabled={savingMatch === match.id || !canSave}
-                                  className="mt-1 h-9 w-full rounded-lg border border-[var(--border)] bg-[var(--surface-2)] text-xs font-bold uppercase tracking-[0.08em] text-[var(--text-muted)] transition hover:border-[var(--accent)] hover:text-[var(--text)] disabled:opacity-60"
+                                <span
+                                  className={`mt-1 inline-flex h-9 w-full items-center justify-center rounded-lg border text-xs font-bold uppercase tracking-[0.08em] ${stateStyle}`}
                                 >
-                                  {savingMatch === match.id ? "Guardando…" : "Guardar"}
-                                </button>
+                                  {stateLabel}
+                                </span>
                               ) : null}
                             </div>
                           )}

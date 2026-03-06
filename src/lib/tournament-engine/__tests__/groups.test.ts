@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { calcGroups, createGroups, getFixtureR1, getFixtureR2 } from "../groups";
+import { calcGroups, createGroups, getFixtureR1, getFixtureR2, isValidGroupConfig, listGroupConfigs } from "../groups";
 import type { Pareja } from "../types";
 
 function makeParejas(n: number): Pareja[] {
@@ -18,10 +18,29 @@ describe("groups", () => {
     expect(calcGroups(13)).toEqual({ g3: 3, g4: 1 });
   });
 
+  it("listGroupConfigs devuelve alternativas validas para 12 parejas", () => {
+    expect(listGroupConfigs(12)).toEqual([
+      { g3: 4, g4: 0 },
+      { g3: 0, g4: 3 },
+    ]);
+  });
+
+  it("isValidGroupConfig valida combinaciones correctas", () => {
+    expect(isValidGroupConfig(12, { g3: 4, g4: 0 })).toBe(true);
+    expect(isValidGroupConfig(12, { g3: 0, g4: 3 })).toBe(true);
+    expect(isValidGroupConfig(12, { g3: 2, g4: 1 })).toBe(false);
+  });
+
   it("createGroups distribuye con tamanos validos", () => {
     const groups = createGroups(makeParejas(13));
     const sizes = groups.map((g) => g.length).sort((a, b) => a - b);
     expect(sizes).toEqual([3, 3, 3, 4]);
+  });
+
+  it("createGroups respeta configuracion explicita elegida", () => {
+    const groups = createGroups(makeParejas(12), { g3: 0, g4: 3 });
+    const sizes = groups.map((g) => g.length).sort((a, b) => a - b);
+    expect(sizes).toEqual([4, 4, 4]);
   });
 
   it("getFixtureR1 devuelve fixtures esperados", () => {

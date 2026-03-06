@@ -41,7 +41,7 @@ export default async function BracketPage({ params, searchParams }: RouteParams 
           torneoId={id}
           torneoNombre={torneo.nombre}
           pairs={torneo.parejas}
-          readOnly={publicView}
+          readOnly={publicView || torneo.estado === "FINALIZADO"}
           bracket={{
             id: torneo.bracket.id,
             totalRondas: torneo.bracket.totalRondas,

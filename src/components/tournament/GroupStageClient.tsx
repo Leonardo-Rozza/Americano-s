@@ -1,12 +1,12 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GroupCard } from "@/components/tournament/GroupCard";
 import { ParejaName } from "@/components/tournament/ParejaName";
 import { ScoreInput } from "@/components/tournament/ScoreInput";
 import { useToast } from "@/components/ui/ToastProvider";
-import { isValidMatchScore, mergeScoresKeepingDrafts } from "@/lib/score-utils";
+import { isValidMatchScore, mergeScoresKeepingDrafts, parseDraftScore } from "@/lib/score-utils";
 
 type Pair = {
   id: string;
@@ -46,29 +46,69 @@ type TorneoData = {
 
 type GroupStageClientProps = {
   torneo: TorneoData;
+  readOnly?: boolean;
 };
 
 type ScoresMap = Record<string, { s1: string; s2: string }>;
+type MatchSaveState = "idle" | "dirty" | "saving" | "saved" | "error";
+type MatchSaveStateMap = Record<string, MatchSaveState>;
 
 function initScores(groups: Group[]): ScoresMap {
   const out = groups.flatMap((group) => group.partidos);
   return mergeScoresKeepingDrafts({}, out);
 }
 
+function initMatchSaveState(groups: Group[]): MatchSaveStateMap {
+  const out: MatchSaveStateMap = {};
+  for (const group of groups) {
+    for (const match of group.partidos) {
+      out[match.id] = match.completado ? "saved" : "idle";
+    }
+  }
+  return out;
+}
+
 function isComplete(group: Group) {
   return group.partidos.length > 0 && group.partidos.every((match) => match.completado);
 }
 
-export function GroupStageClient({ torneo: initialTorneo }: GroupStageClientProps) {
+export function GroupStageClient({ torneo: initialTorneo, readOnly = false }: GroupStageClientProps) {
   const router = useRouter();
   const { showToast } = useToast();
   const [torneo, setTorneo] = useState(initialTorneo);
   const [scores, setScores] = useState<ScoresMap>(initScores(initialTorneo.grupos));
+  const scoresRef = useRef(scores);
+  const torneoRef = useRef(torneo);
+  const [matchSaveState, setMatchSaveState] = useState<MatchSaveStateMap>(
+    initMatchSaveState(initialTorneo.grupos),
+  );
   const [savingId, setSavingId] = useState<string | null>(null);
   const [ranking, setRanking] = useState<RankingRow[] | null>(null);
   const [loadingRanking, setLoadingRanking] = useState(false);
 
   const allComplete = useMemo(() => torneo.grupos.every(isComplete), [torneo.grupos]);
+
+  useEffect(() => {
+    scoresRef.current = scores;
+  }, [scores]);
+
+  useEffect(() => {
+    torneoRef.current = torneo;
+  }, [torneo]);
+
+  useEffect(() => {
+    setMatchSaveState((current) => {
+      const next = { ...current };
+      for (const group of torneo.grupos) {
+        for (const match of group.partidos) {
+          if (!next[match.id]) {
+            next[match.id] = match.completado ? "saved" : "idle";
+          }
+        }
+      }
+      return next;
+    });
+  }, [torneo.grupos]);
 
   function applyOptimisticMatch(currentTorneo: TorneoData, match: GroupMatch, s1: number, s2: number): TorneoData {
     return {
@@ -89,22 +129,44 @@ export function GroupStageClient({ torneo: initialTorneo }: GroupStageClientProp
     };
   }
 
-  async function saveMatch(match: GroupMatch, explicit?: { s1: number; s2: number }) {
-    const s1 = explicit?.s1 ?? Number(scores[match.id]?.s1);
-    const s2 = explicit?.s2 ?? Number(scores[match.id]?.s2);
-    if (!Number.isInteger(s1) || !Number.isInteger(s2)) {
-      showToast({ message: "Completa ambos scores antes de guardar.", tone: "error" });
+  function saveOnBlur(match: GroupMatch) {
+    if (readOnly) {
+      return;
+    }
+    void saveMatch(match, undefined, { quietValidation: true });
+  }
+
+  async function saveMatch(
+    match: GroupMatch,
+    explicit?: { s1: number; s2: number },
+    options?: { quietValidation?: boolean },
+  ) {
+    if (readOnly) {
+      return;
+    }
+    const source = scoresRef.current;
+    const s1 = explicit?.s1 ?? parseDraftScore(source[match.id]?.s1);
+    const s2 = explicit?.s2 ?? parseDraftScore(source[match.id]?.s2);
+    if (s1 === null || s2 === null) {
+      setMatchSaveState((current) => ({ ...current, [match.id]: "dirty" }));
+      if (!options?.quietValidation) {
+        showToast({ message: "Completa ambos scores antes de guardar.", tone: "error" });
+      }
       return;
     }
     if (!isValidMatchScore(s1, s2)) {
-      showToast({ message: "Resultado invalido. Debe ser 6-x (x entre 0 y 5).", tone: "error" });
+      setMatchSaveState((current) => ({ ...current, [match.id]: "dirty" }));
+      if (!options?.quietValidation) {
+        showToast({ message: "Resultado invalido. Debe ser 6-x (x entre 0 y 5).", tone: "error" });
+      }
       return;
     }
 
-    const prevTorneo = torneo;
-    const prevScores = scores;
+    const prevTorneo = torneoRef.current;
+    const prevScores = scoresRef.current;
     setTorneo((current) => applyOptimisticMatch(current, match, s1, s2));
     setScores((current) => ({ ...current, [match.id]: { s1: String(s1), s2: String(s2) } }));
+    setMatchSaveState((current) => ({ ...current, [match.id]: "saving" }));
     setSavingId(match.id);
     try {
       const response = await fetch(`/api/torneo/${torneo.id}/resultado-grupo`, {
@@ -123,6 +185,7 @@ export function GroupStageClient({ torneo: initialTorneo }: GroupStageClientProp
       if (!payload.success) {
         setTorneo(prevTorneo);
         setScores(prevScores);
+        setMatchSaveState((current) => ({ ...current, [match.id]: "error" }));
         showToast({
           message: payload.error,
           tone: "error",
@@ -140,10 +203,11 @@ export function GroupStageClient({ torneo: initialTorneo }: GroupStageClientProp
           payload.data.grupos.flatMap((group) => group.partidos),
         ),
       );
-      router.refresh();
+      setMatchSaveState((current) => ({ ...current, [match.id]: "saved" }));
     } catch {
       setTorneo(prevTorneo);
       setScores(prevScores);
+      setMatchSaveState((current) => ({ ...current, [match.id]: "error" }));
       showToast({
         message: "No se pudo guardar el resultado.",
         tone: "error",
@@ -239,12 +303,33 @@ export function GroupStageClient({ torneo: initialTorneo }: GroupStageClientProp
                       ) : null}
                       <div className="space-y-2">
                         {section.matches.map((match) => {
-                          const score1 = Number(scores[match.id]?.s1);
-                          const score2 = Number(scores[match.id]?.s2);
-                          const canSave =
-                            Number.isInteger(score1) &&
-                            Number.isInteger(score2) &&
-                            isValidMatchScore(score1, score2);
+                          const state = matchSaveState[match.id] ?? (match.completado ? "saved" : "idle");
+                          const stateStyle =
+                            readOnly
+                              ? "border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)]"
+                              : state === "saving"
+                              ? "border-[var(--accent)]/60 bg-[var(--accent)]/15 text-[var(--accent)]"
+                              : state === "saved"
+                                ? "border-[var(--green)]/60 bg-[var(--green)]/15 text-[var(--green)]"
+                                : state === "error"
+                                  ? "border-[var(--red)]/60 bg-[var(--red)]/15 text-[var(--red)]"
+                                  : state === "dirty"
+                                    ? "border-[var(--gold)]/60 bg-[var(--gold)]/15 text-[var(--gold)]"
+                                    : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-dim)]";
+                          const stateLabel =
+                            readOnly
+                              ? match.completado
+                                ? "Final"
+                                : "Pendiente"
+                              : state === "saving"
+                              ? "Guardando…"
+                              : state === "saved"
+                                ? "Guardado"
+                                : state === "error"
+                                  ? "Error"
+                                  : state === "dirty"
+                                    ? "Sin guardar"
+                                    : "Pendiente";
 
                           return (
                             <div
@@ -254,35 +339,39 @@ export function GroupStageClient({ torneo: initialTorneo }: GroupStageClientProp
                               <ParejaName name={byId[match.pareja1Id]?.nombre ?? "Pareja"} />
                               <ScoreInput
                                 value={scores[match.id]?.s1 ?? ""}
+                                name={`grupo-${group.id}-${match.id}-p1`}
                                 ariaLabel={`Score ${byId[match.pareja1Id]?.nombre ?? "pareja 1"} en grupo ${group.nombre}`}
-                                disabled={savingId === match.id}
-                                onChange={(next) =>
+                                disabled={readOnly || savingId === match.id}
+                                onChange={(next) => {
                                   setScores((current) => ({
                                     ...current,
                                     [match.id]: { s1: next, s2: current[match.id]?.s2 ?? "" },
-                                  }))
-                                }
+                                  }));
+                                  setMatchSaveState((current) => ({ ...current, [match.id]: "dirty" }));
+                                }}
+                                onBlur={() => saveOnBlur(match)}
                               />
                               <span className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--text-dim)]">vs</span>
                               <ScoreInput
                                 value={scores[match.id]?.s2 ?? ""}
+                                name={`grupo-${group.id}-${match.id}-p2`}
                                 ariaLabel={`Score ${byId[match.pareja2Id]?.nombre ?? "pareja 2"} en grupo ${group.nombre}`}
-                                disabled={savingId === match.id}
-                                onChange={(next) =>
+                                disabled={readOnly || savingId === match.id}
+                                onChange={(next) => {
                                   setScores((current) => ({
                                     ...current,
                                     [match.id]: { s1: current[match.id]?.s1 ?? "", s2: next },
-                                  }))
-                                }
+                                  }));
+                                  setMatchSaveState((current) => ({ ...current, [match.id]: "dirty" }));
+                                }}
+                                onBlur={() => saveOnBlur(match)}
                               />
                               <ParejaName name={byId[match.pareja2Id]?.nombre ?? "Pareja"} className="text-right" />
-                              <button
-                                onClick={() => saveMatch(match)}
-                                disabled={savingId === match.id || !canSave}
-                                className="h-10 rounded-lg border border-[var(--border)] px-2 text-xs font-bold uppercase tracking-[0.06em] text-[var(--text-muted)] transition hover:border-[var(--accent)] hover:text-[var(--text)] disabled:cursor-not-allowed disabled:opacity-60"
+                              <span
+                                className={`inline-flex h-10 items-center justify-center rounded-lg border px-2 text-[11px] font-bold uppercase tracking-[0.06em] ${stateStyle}`}
                               >
-                                {savingId === match.id ? "…" : "OK"}
-                              </button>
+                                {stateLabel}
+                              </span>
                             </div>
                           );
                         })}

@@ -4,6 +4,13 @@ import { DeleteTorneoButton } from "@/components/tournament/DeleteTorneoButton";
 
 export const dynamic = "force-dynamic";
 
+function routeByEstado(torneoId: string, estado: string) {
+  if (estado === "RANKING") return `/torneo/${torneoId}/ranking`;
+  if (estado === "DESEMPATE") return `/torneo/${torneoId}/desempate`;
+  if (estado === "ELIMINATORIA" || estado === "FINALIZADO") return `/torneo/${torneoId}/bracket`;
+  return `/torneo/${torneoId}/grupos`;
+}
+
 export default async function Home() {
   const torneos = await db.torneo.findMany({
     orderBy: { createdAt: "desc" },
@@ -53,7 +60,7 @@ export default async function Home() {
             className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 transition hover:border-[var(--accent)]/70 hover:bg-[var(--surface-2)]"
           >
             <div className="mb-3 flex items-center justify-between gap-2">
-              <Link href={`/torneo/${torneo.id}/grupos`} className="min-w-0 flex-1">
+              <Link href={routeByEstado(torneo.id, torneo.estado)} className="min-w-0 flex-1">
                 <h2 className="truncate text-xl font-extrabold text-[var(--text)]">{torneo.nombre}</h2>
               </Link>
               <div className="flex items-center gap-2">
@@ -67,6 +74,22 @@ export default async function Home() {
               <p>{torneo._count.parejas} parejas</p>
               <p>{torneo._count.grupos} grupos</p>
               <p>{torneo.bracket ? `Cuadro de ${torneo.bracket.tamano}` : "Sin bracket generado"}</p>
+            </div>
+            <div className="mt-4 flex flex-wrap gap-2">
+              <Link
+                href={routeByEstado(torneo.id, torneo.estado)}
+                className="inline-flex h-9 items-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-bold uppercase tracking-[0.08em] text-[var(--text-muted)] transition hover:text-[var(--text)]"
+              >
+                Ver
+              </Link>
+              {torneo.estado !== "FINALIZADO" ? (
+                <Link
+                  href={`/torneo/${torneo.id}/editar`}
+                  className="inline-flex h-9 items-center rounded-lg border border-[var(--accent)]/60 bg-[var(--accent)]/10 px-3 text-xs font-bold uppercase tracking-[0.08em] text-[var(--accent)] transition hover:bg-[var(--accent)]/20"
+                >
+                  Editar
+                </Link>
+              ) : null}
             </div>
           </article>
         ))}

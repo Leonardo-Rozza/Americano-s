@@ -33,6 +33,7 @@ export default async function GruposPage({ params }: RouteParams) {
         nombre: torneo.nombre,
         grupos: torneo.grupos,
       }}
+      readOnly={torneo.estado === "FINALIZADO"}
     />
   );
 }
