@@ -3,26 +3,13 @@ import { db } from "@/lib/db";
 import { ApiError, fromUnknownError, ok, parseJson } from "@/lib/api";
 import { requireApiAuth } from "@/lib/auth/require-auth";
 import { computeTorneoRanking } from "@/lib/tournament-service";
-import { buildTiebreakProgress } from "@/lib/tournament-engine/tiebreak";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-const byIdSchema = z.object({
-  desempateId: z.string().trim().min(1),
-  ganadorId: z.string().trim().min(1),
+const desempateSchema = z.object({
+  method: z.enum(["moneda", "tiebreak", "manual"]),
+  byeWinnerIds: z.array(z.string().trim().min(1)).min(1),
 });
-
-const byPairSchema = z.object({
-  pareja1Id: z.string().trim().min(1),
-  pareja2Id: z.string().trim().min(1),
-  ganadorId: z.string().trim().min(1),
-});
-
-const desempateSchema = z.union([byIdSchema, byPairSchema]);
-
-function isSamePair(a1: string, a2: string, b1: string, b2: string) {
-  return (a1 === b1 && a2 === b2) || (a1 === b2 && a2 === b1);
-}
 
 export async function POST(request: Request, { params }: RouteParams) {
   try {
@@ -34,9 +21,7 @@ export async function POST(request: Request, { params }: RouteParams) {
     }
 
     const result = await db.$transaction(async (tx) => {
-      const torneo = await tx.torneo.findUnique({
-        where: { id },
-      });
+      const torneo = await tx.torneo.findUnique({ where: { id } });
       if (!torneo) {
         throw new ApiError("Torneo no encontrado.", 404);
       }
@@ -52,130 +37,53 @@ export async function POST(request: Request, { params }: RouteParams) {
         throw new ApiError("No hay desempates pendientes para este torneo.", 409);
       }
 
-      let records = await tx.desempate.findMany({
-        where: { torneoId: id },
-        orderBy: { id: "asc" },
-      });
+      const { method, byeWinnerIds } = parsed.data;
+      const tiedPairIds = new Set(tiebreaks.parejas.map((p) => p.id));
+      const byeSlotsInDispute = tiebreaks.byeSlotsInDispute;
 
-      let progress = buildTiebreakProgress(tiebreaks, records);
-      if (!progress) {
-        throw new ApiError("No hay desempates pendientes para este torneo.", 409);
-      }
-      if (progress.complete || !progress.expectedDuelPairIds) {
-        await tx.desempate.deleteMany({
-          where: { torneoId: id, resuelto: false },
-        });
-        await tx.torneo.update({
-          where: { id },
-          data: { estado: "RANKING" },
-        });
-        throw new ApiError("No hay desempates pendientes para resolver.", 409);
-      }
-
-      let currentDuel = progress.currentDuel;
-      if (!currentDuel) {
-        await tx.desempate.deleteMany({
-          where: { torneoId: id, resuelto: false },
-        });
-        const [pareja1Id, pareja2Id] = progress.expectedDuelPairIds;
-        const created = await tx.desempate.create({
-          data: {
-            torneoId: id,
-            pareja1Id,
-            pareja2Id,
-            metodo: torneo.metodoDesempate,
-          },
-        });
-        currentDuel = {
-          id: created.id,
-          pareja1Id: created.pareja1Id,
-          pareja2Id: created.pareja2Id,
-        };
-      }
-
-      const data = parsed.data;
-      const resolvedById = "desempateId" in data;
-      if (resolvedById) {
-        const input = data as z.infer<typeof byIdSchema>;
-        if (input.desempateId !== currentDuel.id) {
-          throw new ApiError("Debes resolver el duelo de desempate vigente.", 409);
-        }
-      } else {
-        const input = data as z.infer<typeof byPairSchema>;
-        if (!isSamePair(input.pareja1Id, input.pareja2Id, currentDuel.pareja1Id, currentDuel.pareja2Id)) {
-          throw new ApiError("Debes resolver el duelo de desempate vigente.", 409);
+      for (const winnerId of byeWinnerIds) {
+        if (!tiedPairIds.has(winnerId)) {
+          throw new ApiError("Una o mas parejas ganadoras no pertenecen al grupo empatado.", 400);
         }
       }
-      if (![currentDuel.pareja1Id, currentDuel.pareja2Id].includes(data.ganadorId)) {
-        throw new ApiError("El ganador no pertenece al desempate.", 400);
+      if (byeWinnerIds.length !== byeSlotsInDispute) {
+        throw new ApiError(
+          `Debes elegir exactamente ${byeSlotsInDispute} pareja${byeSlotsInDispute === 1 ? "" : "s"} ganadora${byeSlotsInDispute === 1 ? "" : "s"}.`,
+          400,
+        );
       }
 
-      const updated = await tx.desempate.update({
-        where: { id: currentDuel.id },
-        data: {
-          ganadorId: data.ganadorId,
-          resuelto: true,
-        },
-      });
+      // Delete any previous partial desempate records
+      await tx.desempate.deleteMany({ where: { torneoId: id } });
 
-      records = await tx.desempate.findMany({
-        where: { torneoId: id },
-        orderBy: { id: "asc" },
-      });
-      progress = buildTiebreakProgress(tiebreaks, records);
-      if (!progress) {
-        throw new ApiError("No se pudo actualizar el estado del desempate.", 500);
-      }
+      const winnerSet = new Set(byeWinnerIds);
+      const loserIds = tiebreaks.parejas.map((p) => p.id).filter((pId) => !winnerSet.has(pId));
 
-      if (progress.complete || !progress.expectedDuelPairIds) {
-        await tx.desempate.deleteMany({
-          where: { torneoId: id, resuelto: false },
-        });
-        await tx.torneo.update({
-          where: { id },
-          data: { estado: "RANKING" },
-        });
+      // Map "manual" to "TIEBREAK" since DB enum only has MONEDA | TIEBREAK
+      const dbMetodo = method === "moneda" ? "MONEDA" : "TIEBREAK";
 
-        return {
-          desempate: updated,
-          pending: 0,
-          complete: true,
-          nextDuel: null,
-        };
-      }
-
-      let nextDuel = progress.currentDuel;
-      if (!nextDuel) {
-        await tx.desempate.deleteMany({
-          where: { torneoId: id, resuelto: false },
-        });
-        const [pareja1Id, pareja2Id] = progress.expectedDuelPairIds;
-        const created = await tx.desempate.create({
+      // Create one elimination record per loser pairing them with a winner
+      for (let idx = 0; idx < loserIds.length; idx += 1) {
+        const loserId = loserIds[idx];
+        const winnerId = byeWinnerIds[idx % byeWinnerIds.length];
+        await tx.desempate.create({
           data: {
             torneoId: id,
-            pareja1Id,
-            pareja2Id,
-            metodo: torneo.metodoDesempate,
+            pareja1Id: winnerId,
+            pareja2Id: loserId,
+            ganadorId: winnerId,
+            metodo: dbMetodo,
+            resuelto: true,
           },
         });
-        nextDuel = {
-          id: created.id,
-          pareja1Id: created.pareja1Id,
-          pareja2Id: created.pareja2Id,
-        };
       }
 
       await tx.torneo.update({
         where: { id },
-        data: { estado: "DESEMPATE" },
+        data: { estado: "RANKING" },
       });
 
-      return {
-        desempate: updated,
-        pending: 1,
-        complete: false,
-        nextDuel,
-      };
+      return { complete: true, byeWinnerIds, method };
     });
 
     return ok(result);

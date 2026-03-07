@@ -44,7 +44,7 @@ const createTorneoSchema = z
       .int()
       .min(6, "Se requieren al menos 6 parejas.")
       .max(30, "El maximo permitido es 30 parejas."),
-    metodoDesempate: z.enum(["MONEDA", "TIEBREAK"]),
+    metodoDesempate: z.enum(["MONEDA", "TIEBREAK"]).optional().default("MONEDA"),
     pairMode: z.enum(["CUSTOM", "GENERIC"]).default("CUSTOM"),
     parejas: z.array(pairInputSchema).optional(),
     formatoGrupos: z

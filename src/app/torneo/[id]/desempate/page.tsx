@@ -1,6 +1,6 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { collectGroupResults, resolveRankingWithTiebreak } from "@/lib/tournament-service";
+import { collectGroupResults } from "@/lib/tournament-service";
 import { computeRanking, detectTiebreaks } from "@/lib/tournament-engine/ranking";
 import { getBracketSize } from "@/lib/tournament-engine/bracket";
 import { DesempateClient } from "@/components/tournament/DesempateClient";
@@ -15,18 +15,10 @@ export default async function DesempatePage({ params }: RouteParams) {
   const authUser = await requirePageAuth();
   const { id } = await params;
   const torneo = await db.torneo.findFirst({
-    where: {
-      id,
-      userId: authUser.userId,
-    },
+    where: { id, userId: authUser.userId },
     include: {
       parejas: true,
-      grupos: {
-        include: {
-          partidos: true,
-        },
-      },
-      desempates: { orderBy: { id: "asc" } },
+      grupos: { include: { partidos: true } },
     },
   });
 
@@ -38,27 +30,29 @@ export default async function DesempatePage({ params }: RouteParams) {
   const ranking = computeRanking(pairs, collectGroupResults(torneo.grupos));
   const byes = getBracketSize(pairs.length) - pairs.length;
   const tiebreaks = detectTiebreaks(ranking, byes);
-  const tiebreakResolution = resolveRankingWithTiebreak(ranking, tiebreaks, torneo.desempates);
-  const progress = tiebreakResolution.tiebreakProgress;
 
-  if (!progress || progress.complete || !tiebreaks || tiebreaks.parejas.length < 2) {
-    return (
-      <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6">
-        <h1 className="text-2xl font-extrabold text-[var(--text)]">No hay desempates pendientes</h1>
-      </section>
-    );
+  if (!tiebreaks || tiebreaks.parejas.length < 2) {
+    redirect(`/torneo/${id}/ranking`);
   }
+
+  const rankingMap = new Map(ranking.map((row) => [row.pareja.id, row]));
+  const tiedPairsWithStats = tiebreaks.parejas.map((pareja) => {
+    const row = rankingMap.get(pareja.id);
+    return {
+      id: pareja.id,
+      nombre: pareja.nombre,
+      gf: row?.gf ?? 0,
+      gc: row?.gc ?? 0,
+      diff: row?.diff ?? 0,
+    };
+  });
 
   return (
     <section>
       <DesempateClient
         torneoId={id}
-        metodo={torneo.metodoDesempate}
-        tiedPairs={tiebreaks.parejas}
-        byeSlots={progress.byeSlotsInDispute}
-        alivePairIds={progress.aliveIds}
-        eliminatedPairIds={progress.eliminatedIds}
-        currentDuel={progress.currentDuel}
+        tiedPairs={tiedPairsWithStats}
+        byeSlots={tiebreaks.byeSlotsInDispute}
       />
     </section>
   );

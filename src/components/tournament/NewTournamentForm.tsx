@@ -40,7 +40,6 @@ export function NewTournamentForm() {
   const [nombre, setNombre] = useState('Americano');
   const [numParejas, setNumParejas] = useState(12);
   const [groupConfig, setGroupConfig] = useState(() => calcGroups(12));
-  const [metodo, setMetodo] = useState<'MONEDA' | 'TIEBREAK'>('MONEDA');
   const [pairMode, setPairMode] = useState<PairMode>('CUSTOM');
   const [parejas, setParejas] = useState<PairDraft[]>(createEmptyPairs(12));
   const [submitting, setSubmitting] = useState(false);
@@ -119,7 +118,6 @@ export function NewTournamentForm() {
     const body = {
       nombre: nombre.trim(),
       numParejas,
-      metodoDesempate: metodo,
       pairMode,
       ...(pairMode === 'CUSTOM'
         ? {
@@ -245,36 +243,6 @@ export function NewTournamentForm() {
         <div>
           <p className="text-xs uppercase tracking-[0.14em] text-[var(--text-dim)]">BYEs</p>
           <p className="mt-1 text-2xl font-black text-[var(--purple)]">{preview.byes}</p>
-        </div>
-      </section>
-
-      <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
-        <p className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-dim)]">
-          Metodo de desempate
-        </p>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <button
-            type="button"
-            onClick={() => setMetodo('MONEDA')}
-            className={`rounded-xl border px-4 py-3 text-left font-semibold transition ${
-              metodo === 'MONEDA'
-                ? 'border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--text)]'
-                : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-muted)]'
-            }`}
-          >
-            🪙 Moneda
-          </button>
-          <button
-            type="button"
-            onClick={() => setMetodo('TIEBREAK')}
-            className={`rounded-xl border px-4 py-3 text-left font-semibold transition ${
-              metodo === 'TIEBREAK'
-                ? 'border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--text)]'
-                : 'border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-muted)]'
-            }`}
-          >
-            🎾 Tie-break
-          </button>
         </div>
       </section>
 

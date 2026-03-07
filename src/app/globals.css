@@ -71,7 +71,7 @@ a {
 }
 
 .coin-spinning {
-  animation: coinSpin 2s linear forwards;
+  animation: coinSpin 2s ease-in-out forwards;
 }
 
 .coin-done {
