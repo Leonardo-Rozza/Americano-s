@@ -15,8 +15,52 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Americano's",
-  description: "Organiza torneos de padel amateur",
+  metadataBase: new URL("https://americano-s.vercel.app"),
+  title: {
+    default: "Americano's | Torneos de Padel",
+    template: "%s | Americano's",
+  },
+  description:
+    "Organiza torneos de padel tipo americano con grupos, ranking, desempates y bracket eliminatorio.",
+  applicationName: "Americano's",
+  keywords: [
+    "torneos de padel",
+    "padel americano",
+    "organizador de torneos",
+    "ranking padel",
+    "bracket padel",
+  ],
+  alternates: {
+    canonical: "/dashboard",
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  openGraph: {
+    type: "website",
+    locale: "es_AR",
+    url: "https://americano-s.vercel.app/dashboard",
+    title: "Americano's | Torneos de Padel",
+    description:
+      "Gestiona torneos con grupos, ranking automatico, desempates y bracket en una sola app.",
+    siteName: "Americano's",
+    images: [
+      {
+        url: "/opengraph-image",
+        width: 1200,
+        height: 630,
+        alt: "Americano's - Gestion de torneos de padel",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "Americano's | Torneos de Padel",
+    description:
+      "Gestiona torneos con grupos, ranking automatico, desempates y bracket en una sola app.",
+    images: ["/opengraph-image"],
+  },
 };
 
 export default function RootLayout({
