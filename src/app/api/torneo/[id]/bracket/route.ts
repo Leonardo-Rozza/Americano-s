@@ -1,8 +1,13 @@
 import { db } from "@/lib/db";
 import { ApiError, fromUnknownError, ok } from "@/lib/api";
 import { buildBracket, getBracketSize } from "@/lib/tournament-engine/bracket";
-import { areAllGroupMatchesComplete, collectGroupResults, makeGroupRivals } from "@/lib/tournament-service";
-import { computeRanking } from "@/lib/tournament-engine/ranking";
+import {
+  areAllGroupMatchesComplete,
+  collectGroupResults,
+  makeGroupRivals,
+  resolveRankingWithTiebreak,
+} from "@/lib/tournament-service";
+import { computeRanking, detectTiebreaks } from "@/lib/tournament-engine/ranking";
 import { syncBracketProgression } from "@/lib/bracket-progression";
 import { requireApiAuth } from "@/lib/auth/require-auth";
 import { resolvePairDisplayName } from "@/lib/pair-utils";
@@ -28,7 +33,7 @@ export async function POST(request: Request, { params }: RouteParams) {
             },
           },
           desempates: {
-            where: { resuelto: false },
+            orderBy: { id: "asc" },
           },
           bracket: {
             include: { matches: true },
@@ -41,17 +46,22 @@ export async function POST(request: Request, { params }: RouteParams) {
       if (torneo.estado === "FINALIZADO") {
         throw new ApiError("El torneo esta finalizado y es solo lectura.", 409);
       }
-      if (torneo.desempates.length > 0) {
-        throw new ApiError("Hay desempates pendientes. Resolve eso antes de generar el bracket.", 409);
-      }
       if (!areAllGroupMatchesComplete(torneo.grupos)) {
         throw new ApiError("Debes completar todos los partidos de grupos antes de generar el bracket.", 409);
       }
 
-      const ranking = computeRanking(
+      const rankingBase = computeRanking(
         torneo.parejas.map((pair) => ({ id: pair.id, nombre: resolvePairDisplayName(pair) })),
         collectGroupResults(torneo.grupos),
       );
+      const byes = getBracketSize(rankingBase.length) - rankingBase.length;
+      const tiebreaks = detectTiebreaks(rankingBase, byes);
+      const tiebreakResolution = resolveRankingWithTiebreak(rankingBase, tiebreaks, torneo.desempates);
+      if (tiebreakResolution.tiebreakPending) {
+        throw new ApiError("Hay desempates pendientes. Resolve eso antes de generar el bracket.", 409);
+      }
+
+      const ranking = tiebreakResolution.ranking;
       const rankedPairs = ranking.map((entry) => entry.pareja);
       const groupRivals = makeGroupRivals(torneo.grupos);
       const rounds = buildBracket(rankedPairs, groupRivals);

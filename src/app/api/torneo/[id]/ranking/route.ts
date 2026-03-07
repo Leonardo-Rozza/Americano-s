@@ -20,23 +20,21 @@ export async function POST(request: Request, { params }: RouteParams) {
 
       const desempates: Array<{ id: string; pareja1Id: string; pareja2Id: string }> = [];
       await tx.desempate.deleteMany({
-        where: { torneoId: id, resuelto: false },
+        where: { torneoId: id },
       });
 
       if (tiebreaks) {
         const pairs = tiebreaks.parejas;
-        for (let i = 0; i < pairs.length; i += 1) {
-          for (let j = i + 1; j < pairs.length; j += 1) {
-            const created = await tx.desempate.create({
-              data: {
-                torneoId: id,
-                pareja1Id: pairs[i].id,
-                pareja2Id: pairs[j].id,
-                metodo: torneo.metodoDesempate,
-              },
-            });
-            desempates.push(created);
-          }
+        if (pairs.length >= 2) {
+          const created = await tx.desempate.create({
+            data: {
+              torneoId: id,
+              pareja1Id: pairs[0].id,
+              pareja2Id: pairs[1].id,
+              metodo: torneo.metodoDesempate,
+            },
+          });
+          desempates.push(created);
         }
       }
 

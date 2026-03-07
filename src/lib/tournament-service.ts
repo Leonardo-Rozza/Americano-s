@@ -2,7 +2,8 @@ import { Prisma, type PrismaClient } from "@prisma/client";
 import { getBracketSize } from "@/lib/tournament-engine/bracket";
 import { createGroups, getFixtureR1, getFixtureR2 } from "@/lib/tournament-engine/groups";
 import { computeRanking, detectTiebreaks } from "@/lib/tournament-engine/ranking";
-import type { GrupoConfig, MatchResult, Round1Result } from "@/lib/tournament-engine/types";
+import { applyTiebreakToRanking, buildTiebreakProgress } from "@/lib/tournament-engine/tiebreak";
+import type { GrupoConfig, MatchResult, RankingEntry, Round1Result, TiebreakInfo } from "@/lib/tournament-engine/types";
 import { ApiError } from "@/lib/api";
 import { buildGenericPairName, buildPairName, resolvePairDisplayName, type PairMode } from "@/lib/pair-utils";
 
@@ -279,4 +280,25 @@ export async function createTorneoWithGroups(
   }
 
   return torneo.id;
+}
+
+export function resolveRankingWithTiebreak(
+  ranking: RankingEntry[],
+  tiebreakInfo: TiebreakInfo | null,
+  records: Array<{
+    id: string;
+    pareja1Id: string;
+    pareja2Id: string;
+    ganadorId: string | null;
+    resuelto: boolean;
+  }>,
+) {
+  const tiebreakProgress = buildTiebreakProgress(tiebreakInfo, records);
+  const resolvedRanking = applyTiebreakToRanking(ranking, tiebreakProgress);
+
+  return {
+    ranking: resolvedRanking,
+    tiebreakProgress,
+    tiebreakPending: Boolean(tiebreakProgress && !tiebreakProgress.complete),
+  };
 }

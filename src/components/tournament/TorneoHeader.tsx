@@ -45,14 +45,28 @@ export function TorneoHeader({ torneoId, nombre, fechaISO, parejas, estado }: To
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-dim)]">Torneo</p>
           <h1 className="text-2xl font-extrabold text-[var(--text)] md:text-3xl">{nombre}</h1>
         </div>
-        {estado === "FINALIZADO" ? (
+        <div className="flex flex-wrap items-center gap-2">
           <Link
-            href="/torneos/create"
-            className="inline-flex h-10 items-center rounded-lg border border-[var(--gold)] bg-[var(--gold)] px-3 text-sm font-bold text-[#1f2937] transition hover:brightness-110"
+            href="/dashboard"
+            className="inline-flex h-10 items-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 text-sm font-bold text-[var(--text)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
           >
-            Crear otro torneo
+            Dashboard
           </Link>
-        ) : null}
+          <Link
+            href="/torneos"
+            className="inline-flex h-10 items-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 text-sm font-bold text-[var(--text)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+          >
+            Mis torneos
+          </Link>
+          {estado === "FINALIZADO" ? (
+            <Link
+              href="/torneos/create"
+              className="inline-flex h-10 items-center rounded-lg border border-[var(--gold)] bg-[var(--gold)] px-3 text-sm font-bold text-[#1f2937] transition hover:brightness-110"
+            >
+              Crear otro torneo
+            </Link>
+          ) : null}
+        </div>
       </div>
 
       <div className="mb-4 grid gap-2 text-sm text-[var(--text-muted)] md:grid-cols-3">

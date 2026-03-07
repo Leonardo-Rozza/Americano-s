@@ -33,7 +33,13 @@ export function LoginForm({ nextPath }: LoginFormProps) {
         | { success: false; error: string };
 
       if (!payload.success) {
-        setError(payload.error);
+        if (response.status === 401) {
+          setError("Usuario o contraseña inválidos.");
+        } else if (response.status === 400) {
+          setError(payload.error || "Revisá los datos ingresados.");
+        } else {
+          setError("No se pudo iniciar sesión. Intentá nuevamente.");
+        }
         return;
       }
 

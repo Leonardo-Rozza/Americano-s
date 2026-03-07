@@ -117,7 +117,9 @@ Los scripts de Prisma (`seed:user`, `user:create`, `backfill:parejas`) cargan au
 6. Desempate (`/torneo/[id]/desempate`):
 
 - resolucion por `MONEDA` o `TIEBREAK` segun configuracion.
-- cuando no quedan desempates pendientes, vuelve a estado `RANKING`.
+- en empates multiples del corte de BYE, usa eliminacion progresiva: cada duelo elimina 1 pareja.
+- el backend controla el cierre del desempate (el cliente no puede forzar finalizacion).
+- cuando quedan exactamente los BYEs en disputa, vuelve a estado `RANKING`.
 
 7. Bracket (`/torneo/[id]/bracket`):
 
@@ -189,17 +191,12 @@ npm run seed:user
 ```
 
 Credenciales iniciales del script:
+
 - `username`: `admin`
 - `password`: `admin123`
 
 2. Script manual para cualquier usuario:
 
 ```bash
-npm run user:create -- --username=leo --password=miPasswordSegura
+npm run user:create -- --username=user-name --password=miPasswordSegura
 ```
-
-3. Prisma Studio / SQL manual:
-
-- campo obligatorio: `username`
-- campo obligatorio: `passwordHash` (nunca guardar password en claro)
-- para generar hash podes reutilizar `@node-rs/argon2` con la misma config de `src/lib/auth/password.ts`.

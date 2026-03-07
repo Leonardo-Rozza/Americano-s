@@ -41,8 +41,8 @@ export function fromUnknownError(error: unknown, fallback = "Error interno del s
   if (error instanceof z.ZodError) {
     return fail(error.issues.map((issue) => issue.message).join(", "), 400);
   }
-  if (error instanceof Error) {
-    return fail(error.message || fallback, 500);
-  }
+
+  // Never expose internal exception details to clients.
+  console.error("[API_UNHANDLED_ERROR]", error);
   return fail(fallback, 500);
 }

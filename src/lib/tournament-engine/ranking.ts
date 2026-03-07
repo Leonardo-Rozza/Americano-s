@@ -1,7 +1,7 @@
 import type { MatchResult, Pareja, RankingEntry, TiebreakInfo } from "./types";
 
-function sameScore(a: RankingEntry, b: RankingEntry): boolean {
-  return a.diff === b.diff && a.gf === b.gf;
+function sameDiff(a: RankingEntry, b: RankingEntry): boolean {
+  return a.diff === b.diff;
 }
 
 export function computeRanking(parejas: Pareja[], allResults: MatchResult[]): RankingEntry[] {
@@ -41,10 +41,10 @@ export function detectTiebreaks(ranking: RankingEntry[], numByes: number): Tiebr
   let start = cut;
   let end = cut;
 
-  while (start > 0 && sameScore(ranking[start - 1], ranking[cut])) {
+  while (start > 0 && sameDiff(ranking[start - 1], ranking[cut])) {
     start -= 1;
   }
-  while (end < ranking.length - 1 && sameScore(ranking[end + 1], ranking[cut])) {
+  while (end < ranking.length - 1 && sameDiff(ranking[end + 1], ranking[cut])) {
     end += 1;
   }
 

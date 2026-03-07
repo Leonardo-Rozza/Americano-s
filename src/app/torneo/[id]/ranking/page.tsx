@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { collectGroupResults } from "@/lib/tournament-service";
+import { collectGroupResults, resolveRankingWithTiebreak } from "@/lib/tournament-service";
 import { computeRanking, detectTiebreaks } from "@/lib/tournament-engine/ranking";
 import { getBracketSize } from "@/lib/tournament-engine/bracket";
 import { GoToBracketButton } from "@/components/tournament/GoToBracketButton";
@@ -28,9 +28,7 @@ export default async function RankingPage({ params }: RouteParams) {
         },
       },
       bracket: true,
-      desempates: {
-        where: { resuelto: false },
-      },
+      desempates: { orderBy: { id: "asc" } },
     },
   });
 
@@ -43,7 +41,9 @@ export default async function RankingPage({ params }: RouteParams) {
   const cuadro = getBracketSize(ranking.length);
   const byes = cuadro - ranking.length;
   const tiebreaks = detectTiebreaks(ranking, byes);
-  const tiebreakPending = Boolean(tiebreaks) || torneo.desempates.length > 0;
+  const tiebreakResolution = resolveRankingWithTiebreak(ranking, tiebreaks, torneo.desempates);
+  const rankingRows = tiebreakResolution.ranking;
+  const tiebreakPending = tiebreakResolution.tiebreakPending;
 
   return (
     <section>
@@ -59,7 +59,7 @@ export default async function RankingPage({ params }: RouteParams) {
           </div>
 
           <div className="divide-y divide-[var(--border)]">
-            {ranking.map((row, idx) => {
+            {rankingRows.map((row, idx) => {
               const hasBye = idx < byes;
               const diffClass =
                 row.diff > 0 ? "text-[var(--green)]" : row.diff < 0 ? "text-[var(--red)]" : "text-[var(--text-dim)]";
@@ -96,7 +96,7 @@ export default async function RankingPage({ params }: RouteParams) {
         </div>
 
         <div className="space-y-2 p-3 md:hidden">
-          {ranking.map((row, idx) => {
+          {rankingRows.map((row, idx) => {
             const hasBye = idx < byes;
             const diffClass =
               row.diff > 0 ? "text-[var(--green)]" : row.diff < 0 ? "text-[var(--red)]" : "text-[var(--text-dim)]";
