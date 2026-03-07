@@ -9,13 +9,13 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "prisma:generate": "node --env-file=.env.local ./node_modules/prisma/build/index.js generate",
-    "prisma:db:push": "node --env-file=.env.local ./node_modules/prisma/build/index.js db push",
-    "prisma:migrate:deploy": "node --env-file=.env.local ./node_modules/prisma/build/index.js migrate deploy",
-    "prisma:studio": "node --env-file=.env.local ./node_modules/prisma/build/index.js studio",
-    "backfill:parejas": "node --env-file=.env.local prisma/backfill-parejas.mjs",
-    "seed:user": "node --env-file=.env.local prisma/seed-user.mjs",
-    "user:create": "node --env-file=.env.local prisma/create-user.mjs"
+    "prisma:generate": "node --env-file=.env ./node_modules/prisma/build/index.js generate",
+    "prisma:db:push": "node --env-file=.env ./node_modules/prisma/build/index.js db push",
+    "prisma:migrate:deploy": "node --env-file=.env ./node_modules/prisma/build/index.js migrate deploy",
+    "prisma:studio": "node --env-file=.env ./node_modules/prisma/build/index.js studio",
+    "backfill:parejas": "node --env-file=.env prisma/backfill-parejas.mjs",
+    "seed:user": "node --env-file=.env prisma/seed-user.mjs",
+    "user:create": "node --env-file=.env prisma/create-user.mjs"
   },
   "dependencies": {
     "@node-rs/argon2": "^2.0.2",
