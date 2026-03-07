@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { TorneoHeader } from "@/components/tournament/TorneoHeader";
+import { requirePageAuth } from "@/lib/auth/require-auth";
 
 type LayoutParams = {
   children: React.ReactNode;
@@ -10,9 +11,13 @@ type LayoutParams = {
 export const dynamic = "force-dynamic";
 
 export default async function TorneoLayout({ children, params }: LayoutParams) {
+  const authUser = await requirePageAuth();
   const { id } = await params;
-  const torneo = await db.torneo.findUnique({
-    where: { id },
+  const torneo = await db.torneo.findFirst({
+    where: {
+      id,
+      userId: authUser.userId,
+    },
     include: {
       _count: {
         select: { parejas: true },

@@ -4,6 +4,7 @@ import { db } from "@/lib/db";
 import { ApiError, fromUnknownError, ok, parseJson } from "@/lib/api";
 import { syncBracketProgression } from "@/lib/bracket-progression";
 import { isValidMatchScore } from "@/lib/score-utils";
+import { requireApiAuth } from "@/lib/auth/require-auth";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -38,6 +39,7 @@ async function reSyncBracket(tx: Prisma.TransactionClient, bracketId: string, to
 
 export async function PUT(request: Request, { params }: RouteParams) {
   try {
+    const authUser = await requireApiAuth(request);
     const { id } = await params;
     const parsed = await parseJson(request, resultSchema);
     if (!parsed.success) {
@@ -50,9 +52,12 @@ export async function PUT(request: Request, { params }: RouteParams) {
     const payload = await db.$transaction(async (tx) => {
       const torneo = await tx.torneo.findUnique({
         where: { id },
-        select: { estado: true },
+        select: { estado: true, userId: true },
       });
       if (!torneo) {
+        throw new ApiError("Torneo no encontrado.", 404);
+      }
+      if (torneo.userId !== authUser.userId) {
         throw new ApiError("Torneo no encontrado.", 404);
       }
       if (torneo.estado === "FINALIZADO") {

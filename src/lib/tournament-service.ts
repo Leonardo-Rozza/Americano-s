@@ -23,11 +23,21 @@ export const torneoFullInclude = {
   desempates: { orderBy: { id: "asc" } },
 } satisfies Prisma.TorneoInclude;
 
-export async function getTorneoOrThrow(client: PrismaClient, torneoId: string) {
-  const torneo = await client.torneo.findUnique({
-    where: { id: torneoId },
-    include: torneoFullInclude,
-  });
+export async function getTorneoOrThrow(
+  client: PrismaClient | Prisma.TransactionClient,
+  torneoId: string,
+  userId?: string,
+) {
+  const torneo = userId
+    ? await client.torneo.findFirst({
+        where: { id: torneoId, userId },
+        include: torneoFullInclude,
+      })
+    : await client.torneo.findUnique({
+        where: { id: torneoId },
+        include: torneoFullInclude,
+      });
+
   if (!torneo) {
     throw new ApiError("Torneo no encontrado.", 404);
   }
@@ -143,7 +153,11 @@ export async function generateRound2IfNeeded(tx: Prisma.TransactionClient, grupo
   }
 }
 
-export async function computeTorneoRanking(tx: Prisma.TransactionClient, torneoId: string) {
+export async function computeTorneoRanking(
+  tx: Prisma.TransactionClient,
+  torneoId: string,
+  userId?: string,
+) {
   const torneo = await tx.torneo.findUnique({
     where: { id: torneoId },
     include: {
@@ -156,6 +170,9 @@ export async function computeTorneoRanking(tx: Prisma.TransactionClient, torneoI
     },
   });
   if (!torneo) {
+    throw new ApiError("Torneo no encontrado.", 404);
+  }
+  if (userId && torneo.userId !== userId) {
     throw new ApiError("Torneo no encontrado.", 404);
   }
 
@@ -174,6 +191,7 @@ export async function computeTorneoRanking(tx: Prisma.TransactionClient, torneoI
 export async function createTorneoWithGroups(
   tx: Prisma.TransactionClient,
   input: {
+    userId: string;
     nombre: string;
     numParejas: number;
     metodoDesempate: "MONEDA" | "TIEBREAK";
@@ -184,6 +202,7 @@ export async function createTorneoWithGroups(
 ) {
   const torneo = await tx.torneo.create({
     data: {
+      userId: input.userId,
       nombre: input.nombre,
       tipo: "AMERICANO",
       estado: "GRUPOS",

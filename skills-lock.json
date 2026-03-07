@@ -21,6 +21,11 @@
       "sourceType": "github",
       "computedHash": "d004c5e5e2e7132e1d64e9c2a339db7f7aaa69053a5c19cddc210dd35dd6fff5"
     },
+    "jwt-security": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "computedHash": "07d22bb08ad8ac8ffcb90885bb04c04ec7e6f5498eb63580ca6072a4c1694c80"
+    },
     "systematic-debugging": {
       "source": "obra/superpowers",
       "sourceType": "github",

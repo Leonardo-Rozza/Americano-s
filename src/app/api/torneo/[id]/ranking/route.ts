@@ -1,14 +1,16 @@
 import { db } from "@/lib/db";
 import { ApiError, fromUnknownError, ok } from "@/lib/api";
 import { areAllGroupMatchesComplete, computeTorneoRanking } from "@/lib/tournament-service";
+import { requireApiAuth } from "@/lib/auth/require-auth";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-export async function POST(_: Request, { params }: RouteParams) {
+export async function POST(request: Request, { params }: RouteParams) {
   try {
+    const authUser = await requireApiAuth(request);
     const { id } = await params;
     const payload = await db.$transaction(async (tx) => {
-      const { torneo, ranking, tiebreaks } = await computeTorneoRanking(tx, id);
+      const { torneo, ranking, tiebreaks } = await computeTorneoRanking(tx, id, authUser.userId);
       if (torneo.estado === "FINALIZADO") {
         throw new ApiError("El torneo esta finalizado y es solo lectura.", 409);
       }

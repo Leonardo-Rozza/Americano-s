@@ -4,6 +4,7 @@ import { fail, fromUnknownError, ok, parseJson } from "@/lib/api";
 import { createTorneoWithGroups, getTorneoOrThrow } from "@/lib/tournament-service";
 import { isValidGroupConfig } from "@/lib/tournament-engine/groups";
 import { areSamePlayers, isValidPlayerName } from "@/lib/pair-utils";
+import { requireApiAuth } from "@/lib/auth/require-auth";
 
 const pairInputSchema = z
   .object({
@@ -81,6 +82,7 @@ const createTorneoSchema = z
 
 export async function POST(request: Request) {
   try {
+    const authUser = await requireApiAuth(request);
     const parsed = await parseJson(request, createTorneoSchema);
     if (!parsed.success) {
       return parsed.response;
@@ -88,6 +90,7 @@ export async function POST(request: Request) {
 
     const torneoId = await db.$transaction((tx) =>
       createTorneoWithGroups(tx, {
+        userId: authUser.userId,
         nombre: parsed.data.nombre,
         numParejas: parsed.data.numParejas,
         metodoDesempate: parsed.data.metodoDesempate,
@@ -97,7 +100,7 @@ export async function POST(request: Request) {
       }),
     );
 
-    const torneo = await getTorneoOrThrow(db, torneoId);
+    const torneo = await getTorneoOrThrow(db, torneoId, authUser.userId);
     return ok(torneo, 201);
   } catch (error) {
     return fromUnknownError(error, "No se pudo crear el torneo.");

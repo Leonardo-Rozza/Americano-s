@@ -248,7 +248,7 @@ export function BracketClient({
           <p className="mt-1 text-2xl font-black text-[var(--gold)]">🏆 {champion.nombre}</p>
           <div className="mt-3">
             <Link
-              href="/torneo/nuevo"
+              href="/torneos/create"
               className="inline-flex h-10 items-center rounded-lg border border-[var(--gold)] bg-[var(--gold)] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-[#1f2937] transition hover:brightness-110"
             >
               Crear otro torneo

@@ -4,16 +4,21 @@ import { buildBracket, getBracketSize } from "@/lib/tournament-engine/bracket";
 import { areAllGroupMatchesComplete, collectGroupResults, makeGroupRivals } from "@/lib/tournament-service";
 import { computeRanking } from "@/lib/tournament-engine/ranking";
 import { syncBracketProgression } from "@/lib/bracket-progression";
+import { requireApiAuth } from "@/lib/auth/require-auth";
 import { resolvePairDisplayName } from "@/lib/pair-utils";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
-export async function POST(_: Request, { params }: RouteParams) {
+export async function POST(request: Request, { params }: RouteParams) {
   try {
+    const authUser = await requireApiAuth(request);
     const { id } = await params;
     const payload = await db.$transaction(async (tx) => {
-      const torneo = await tx.torneo.findUnique({
-        where: { id },
+      const torneo = await tx.torneo.findFirst({
+        where: {
+          id,
+          userId: authUser.userId,
+        },
         include: {
           parejas: { orderBy: { id: "asc" } },
           grupos: {

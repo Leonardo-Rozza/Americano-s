@@ -1,6 +1,7 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
 import { ApiError, fromUnknownError, ok, parseJson } from "@/lib/api";
+import { requireApiAuth } from "@/lib/auth/require-auth";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -21,6 +22,7 @@ const desempateSchema = z.union([byIdSchema, byPairSchema]);
 
 export async function POST(request: Request, { params }: RouteParams) {
   try {
+    const authUser = await requireApiAuth(request);
     const { id } = await params;
     const parsed = await parseJson(request, desempateSchema);
     if (!parsed.success) {
@@ -32,6 +34,9 @@ export async function POST(request: Request, { params }: RouteParams) {
         where: { id },
       });
       if (!torneo) {
+        throw new ApiError("Torneo no encontrado.", 404);
+      }
+      if (torneo.userId !== authUser.userId) {
         throw new ApiError("Torneo no encontrado.", 404);
       }
       if (torneo.estado === "FINALIZADO") {
@@ -65,6 +70,9 @@ export async function POST(request: Request, { params }: RouteParams) {
             ],
           },
         });
+      }
+      if (desempate && desempate.torneoId !== id) {
+        throw new ApiError("No se pudo resolver el duelo de desempate.", 400);
       }
 
       const pair1Id = desempate

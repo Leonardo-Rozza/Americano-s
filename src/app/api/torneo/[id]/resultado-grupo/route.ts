@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { ApiError, fromUnknownError, ok, parseJson } from "@/lib/api";
 import { generateRound2IfNeeded, getTorneoOrThrow } from "@/lib/tournament-service";
 import { isValidMatchScore } from "@/lib/score-utils";
+import { requireApiAuth } from "@/lib/auth/require-auth";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -14,6 +15,7 @@ const resultSchema = z.object({
 
 export async function PUT(request: Request, { params }: RouteParams) {
   try {
+    const authUser = await requireApiAuth(request);
     const { id } = await params;
     const parsed = await parseJson(request, resultSchema);
     if (!parsed.success) {
@@ -27,9 +29,12 @@ export async function PUT(request: Request, { params }: RouteParams) {
     await db.$transaction(async (tx) => {
       const torneo = await tx.torneo.findUnique({
         where: { id },
-        select: { estado: true },
+        select: { estado: true, userId: true },
       });
       if (!torneo) {
+        throw new ApiError("Torneo no encontrado.", 404);
+      }
+      if (torneo.userId !== authUser.userId) {
         throw new ApiError("Torneo no encontrado.", 404);
       }
       if (torneo.estado === "FINALIZADO") {
@@ -58,7 +63,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       }
     });
 
-    const torneo = await getTorneoOrThrow(db, id);
+    const torneo = await getTorneoOrThrow(db, id, authUser.userId);
     return ok(torneo);
   } catch (error) {
     return fromUnknownError(error, "No se pudo guardar el resultado del grupo.");

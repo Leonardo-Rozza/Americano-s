@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { ApiError, fromUnknownError, ok, parseJson } from "@/lib/api";
 import { getTorneoOrThrow } from "@/lib/tournament-service";
 import { areSamePlayers, buildGenericPairName, buildPairName, isValidPlayerName } from "@/lib/pair-utils";
+import { requireApiAuth } from "@/lib/auth/require-auth";
 
 type RouteParams = { params: Promise<{ id: string }> };
 const pairUpdateSchema = z
@@ -67,20 +68,25 @@ const updateTorneoSchema = z
     }
   });
 
-export async function GET(_: Request, { params }: RouteParams) {
+export async function GET(request: Request, { params }: RouteParams) {
   try {
+    const authUser = await requireApiAuth(request);
     const { id } = await params;
-    const torneo = await getTorneoOrThrow(db, id);
+    const torneo = await getTorneoOrThrow(db, id, authUser.userId);
     return ok(torneo);
   } catch (error) {
     return fromUnknownError(error, "No se pudo obtener el torneo.");
   }
 }
 
-export async function DELETE(_: Request, { params }: RouteParams) {
+export async function DELETE(request: Request, { params }: RouteParams) {
   try {
+    const authUser = await requireApiAuth(request);
     const { id } = await params;
-    const torneo = await db.torneo.findUnique({ where: { id } });
+    const torneo = await db.torneo.findFirst({
+      where: { id, userId: authUser.userId },
+      select: { id: true },
+    });
     if (!torneo) {
       throw new ApiError("Torneo no encontrado.", 404);
     }
@@ -118,6 +124,7 @@ export async function DELETE(_: Request, { params }: RouteParams) {
 
 export async function PUT(request: Request, { params }: RouteParams) {
   try {
+    const authUser = await requireApiAuth(request);
     const { id } = await params;
     const parsed = await parseJson(request, updateTorneoSchema);
     if (!parsed.success) {
@@ -125,8 +132,8 @@ export async function PUT(request: Request, { params }: RouteParams) {
     }
 
     await db.$transaction(async (tx) => {
-      const torneo = await tx.torneo.findUnique({
-        where: { id },
+      const torneo = await tx.torneo.findFirst({
+        where: { id, userId: authUser.userId },
         include: {
           parejas: {
             select: { id: true },
@@ -214,7 +221,7 @@ export async function PUT(request: Request, { params }: RouteParams) {
       }
     });
 
-    const torneo = await getTorneoOrThrow(db, id);
+    const torneo = await getTorneoOrThrow(db, id, authUser.userId);
     return ok(torneo);
   } catch (error) {
     return fromUnknownError(error, "No se pudo actualizar el torneo.");

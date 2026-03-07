@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { BracketClient } from "@/components/tournament/BracketClient";
 import { GoToBracketButton } from "@/components/tournament/GoToBracketButton";
+import { requirePageAuth } from "@/lib/auth/require-auth";
 import { resolvePairDisplayName } from "@/lib/pair-utils";
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -11,10 +12,14 @@ type RouteSearchParams = { searchParams: Promise<{ view?: string }> };
 export const dynamic = "force-dynamic";
 
 export default async function BracketPage({ params, searchParams }: RouteParams & RouteSearchParams) {
+  const authUser = await requirePageAuth();
   const { id } = await params;
   const query = await searchParams;
-  const torneo = await db.torneo.findUnique({
-    where: { id },
+  const torneo = await db.torneo.findFirst({
+    where: {
+      id,
+      userId: authUser.userId,
+    },
     include: {
       parejas: {
         select: { id: true, nombre: true, jugador1: true, jugador2: true },

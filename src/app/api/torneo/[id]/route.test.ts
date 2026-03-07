@@ -1,9 +1,9 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
-const { mockTx, mockDb, mockGetTorneoOrThrow } = vi.hoisted(() => {
+const { mockTx, mockDb, mockGetTorneoOrThrow, mockRequireApiAuth } = vi.hoisted(() => {
   const mockTx = {
     torneo: {
-      findUnique: vi.fn(),
+      findFirst: vi.fn(),
       update: vi.fn(),
     },
     desempate: {
@@ -19,8 +19,9 @@ const { mockTx, mockDb, mockGetTorneoOrThrow } = vi.hoisted(() => {
   };
 
   const mockGetTorneoOrThrow = vi.fn();
+  const mockRequireApiAuth = vi.fn();
 
-  return { mockTx, mockDb, mockGetTorneoOrThrow };
+  return { mockTx, mockDb, mockGetTorneoOrThrow, mockRequireApiAuth };
 });
 
 vi.mock("@/lib/db", () => ({
@@ -31,18 +32,26 @@ vi.mock("@/lib/tournament-service", () => ({
   getTorneoOrThrow: mockGetTorneoOrThrow,
 }));
 
+vi.mock("@/lib/auth/require-auth", () => ({
+  requireApiAuth: mockRequireApiAuth,
+}));
+
 import { PUT } from "./route";
 
 describe("PUT /api/torneo/[id] pairMode=GENERIC", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    mockRequireApiAuth.mockResolvedValue({
+      userId: "user-1",
+      username: "admin",
+    });
     mockDb.$transaction.mockImplementation(async (callback: (tx: typeof mockTx) => Promise<unknown>) =>
       callback(mockTx),
     );
   });
 
   it("regenera todas las parejas con nombre generico y limpia jugador1/jugador2", async () => {
-    mockTx.torneo.findUnique.mockResolvedValue({
+    mockTx.torneo.findFirst.mockResolvedValue({
       id: "torneo-1",
       estado: "GRUPOS",
       parejas: [{ id: "p1" }, { id: "p2" }, { id: "p3" }],
@@ -80,6 +89,6 @@ describe("PUT /api/torneo/[id] pairMode=GENERIC", () => {
     });
     expect(mockTx.torneo.update).not.toHaveBeenCalled();
     expect(mockTx.desempate.updateMany).not.toHaveBeenCalled();
-    expect(mockGetTorneoOrThrow).toHaveBeenCalledWith(mockDb, "torneo-1");
+    expect(mockGetTorneoOrThrow).toHaveBeenCalledWith(mockDb, "torneo-1", "user-1");
   });
 });

@@ -4,6 +4,7 @@ import { collectGroupResults } from "@/lib/tournament-service";
 import { computeRanking, detectTiebreaks } from "@/lib/tournament-engine/ranking";
 import { getBracketSize } from "@/lib/tournament-engine/bracket";
 import { DesempateClient } from "@/components/tournament/DesempateClient";
+import { requirePageAuth } from "@/lib/auth/require-auth";
 import { resolvePairDisplayName } from "@/lib/pair-utils";
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -11,9 +12,13 @@ type RouteParams = { params: Promise<{ id: string }> };
 export const dynamic = "force-dynamic";
 
 export default async function DesempatePage({ params }: RouteParams) {
+  const authUser = await requirePageAuth();
   const { id } = await params;
-  const torneo = await db.torneo.findUnique({
-    where: { id },
+  const torneo = await db.torneo.findFirst({
+    where: {
+      id,
+      userId: authUser.userId,
+    },
     include: {
       parejas: true,
       grupos: {
