@@ -4,6 +4,7 @@ import { Barlow, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 
 const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://americano-s.vercel.app';
+const ogImagePath = '/opengraph-image.jpg?v=20260308';
 
 const barlow = Barlow({
   variable: '--font-barlow',
@@ -49,7 +50,7 @@ export const metadata: Metadata = {
     siteName: "Americano's",
     images: [
       {
-        url: '/opengraph-image.png',
+        url: ogImagePath,
         width: 1216,
         height: 582,
         alt: "Americano's - Gestion de torneos de padel",
@@ -61,7 +62,7 @@ export const metadata: Metadata = {
     title: "Americano's | Torneos de Padel",
     description:
       'Gestiona torneos con grupos, ranking automatico, desempates y bracket en una sola app.',
-    images: [`${siteUrl}/opengraph-image.png`],
+    images: [`${siteUrl}${ogImagePath}`],
   },
 };
 
