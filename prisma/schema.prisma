@@ -13,6 +13,18 @@ enum TipoTorneo {
   LARGO
 }
 
+enum Deporte {
+  PADEL
+  FUTBOL
+  TENIS
+}
+
+enum Formato {
+  AMERICANO
+  LARGO
+  LIGA
+}
+
 enum EstadoTorneo {
   CONFIGURACION
   GRUPOS
@@ -32,6 +44,42 @@ enum FaseGrupo {
   RONDA2
 }
 
+enum TipoParticipante {
+  INDIVIDUAL
+  PAREJA
+  EQUIPO
+}
+
+enum FasePartido {
+  GRUPOS
+  FECHAS
+  ELIMINATORIA
+}
+
+enum EstadoPartido {
+  PENDIENTE
+  EN_JUEGO
+  FINALIZADO
+  WALKOVER
+}
+
+enum TipoEventoPartido {
+  GOL
+  ASISTENCIA
+  AMARILLA
+  ROJA
+  MVP
+  ACE
+  WINNER
+  ERROR_NO_FORZADO
+}
+
+enum EstadoFechaCompetencia {
+  PROGRAMADA
+  EN_CURSO
+  CERRADA
+}
+
 model User {
   id           String        @id @default(cuid())
   username     String        @unique
@@ -46,6 +94,9 @@ model Torneo {
   id              String           @id @default(cuid())
   userId          String
   nombre          String
+  deporte         Deporte          @default(PADEL)
+  formato         Formato          @default(AMERICANO)
+  config          Json?
   tipo            TipoTorneo
   estado          EstadoTorneo     @default(CONFIGURACION)
   cantidadCanchas Int              @default(2)
@@ -58,6 +109,15 @@ model Torneo {
   grupos          Grupo[]
   bracket         Bracket?
   desempates      Desempate[]
+  participantes   Participante[]
+  jugadores       Jugador[]
+  partidos        Partido[]
+  eventos         EventoPartido[]
+  fechas          FechaCompetencia[]
+  categorias      Categoria[]
+  rankingConfig   RankingConfig?
+
+  @@index([userId, deporte, formato, estado, createdAt])
 }
 
 model Pareja {
@@ -81,12 +141,14 @@ model Pareja {
 }
 
 model Grupo {
-  id       String        @id @default(cuid())
-  torneoId String
-  nombre   String
-  torneo   Torneo        @relation(fields: [torneoId], references: [id], onDelete: Cascade)
-  parejas  Pareja[]
-  partidos PartidoGrupo[]
+  id            String         @id @default(cuid())
+  torneoId      String
+  nombre        String
+  torneo        Torneo         @relation(fields: [torneoId], references: [id], onDelete: Cascade)
+  parejas       Pareja[]
+  participantes Participante[]
+  partidos      PartidoGrupo[]
+  partidosV2    Partido[]
 }
 
 model PartidoGrupo {
@@ -113,6 +175,7 @@ model Bracket {
   totalRondas Int
   torneo      Torneo         @relation(fields: [torneoId], references: [id], onDelete: Cascade)
   matches     BracketMatch[]
+  partidosV2  Partido[]
 }
 
 model BracketMatch {
@@ -162,4 +225,154 @@ model AuthSession {
   @@index([userId])
   @@index([expiresAt])
   @@index([revokedAt])
+}
+
+model Participante {
+  id                 String         @id @default(cuid())
+  torneoId           String
+  grupoId            String?
+  categoriaId        String?
+  nombre             String
+  tipo               TipoParticipante
+  escudo             String?
+  seed               Int?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+  torneo             Torneo         @relation(fields: [torneoId], references: [id], onDelete: Cascade)
+  grupo              Grupo?         @relation(fields: [grupoId], references: [id], onDelete: SetNull)
+  categoria          Categoria?     @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
+  jugadores          Jugador[]
+  partidosComoLocal  Partido[]      @relation("PartidoLocal")
+  partidosComoVisit  Partido[]      @relation("PartidoVisitante")
+  partidosGanados    Partido[]      @relation("PartidoGanador")
+  eventos            EventoPartido[] @relation("EventoPartidoParticipante")
+
+  @@index([torneoId, tipo, seed])
+  @@index([torneoId, categoriaId])
+}
+
+model Jugador {
+  id             String          @id @default(cuid())
+  torneoId       String
+  participanteId String?
+  nombre         String
+  apodo          String?
+  dorsal         Int?
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  torneo         Torneo          @relation(fields: [torneoId], references: [id], onDelete: Cascade)
+  participante   Participante?   @relation(fields: [participanteId], references: [id], onDelete: SetNull)
+  eventos        EventoPartido[] @relation("EventoPartidoJugador")
+
+  @@index([torneoId, participanteId])
+  @@index([torneoId, nombre])
+}
+
+model Partido {
+  id                String           @id @default(cuid())
+  torneoId          String
+  grupoId           String?
+  bracketId         String?
+  fechaId           String?
+  fase              FasePartido      @default(GRUPOS)
+  ronda             Int?
+  orden             Int?
+  localId           String?
+  visitanteId       String?
+  ganadorId         String?
+  estado            EstadoPartido    @default(PENDIENTE)
+  walkover          Boolean          @default(false)
+  completado        Boolean          @default(false)
+  golesLocal        Int?
+  golesVisitante    Int?
+  penalesLocal      Int?
+  penalesVisitante  Int?
+  set1Local         Int?
+  set1Visitante     Int?
+  set2Local         Int?
+  set2Visitante     Int?
+  set3Local         Int?
+  set3Visitante     Int?
+  tiebreak3Local    Int?
+  tiebreak3Visitante Int?
+  metadata          Json?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  torneo            Torneo           @relation(fields: [torneoId], references: [id], onDelete: Cascade)
+  grupo             Grupo?           @relation(fields: [grupoId], references: [id], onDelete: SetNull)
+  bracket           Bracket?         @relation(fields: [bracketId], references: [id], onDelete: SetNull)
+  fecha             FechaCompetencia? @relation(fields: [fechaId], references: [id], onDelete: SetNull)
+  local             Participante?    @relation("PartidoLocal", fields: [localId], references: [id], onDelete: SetNull)
+  visitante         Participante?    @relation("PartidoVisitante", fields: [visitanteId], references: [id], onDelete: SetNull)
+  ganador           Participante?    @relation("PartidoGanador", fields: [ganadorId], references: [id], onDelete: SetNull)
+  eventos           EventoPartido[]
+
+  @@index([torneoId, estado, fase])
+  @@index([torneoId, fechaId, ronda])
+  @@index([localId])
+  @@index([visitanteId])
+  @@index([ganadorId])
+}
+
+model EventoPartido {
+  id             String             @id @default(cuid())
+  torneoId       String
+  partidoId      String
+  jugadorId      String?
+  participanteId String?
+  tipo           TipoEventoPartido
+  minuto         Int?
+  descripcion    String?
+  createdAt      DateTime           @default(now())
+  torneo         Torneo             @relation(fields: [torneoId], references: [id], onDelete: Cascade)
+  partido        Partido            @relation(fields: [partidoId], references: [id], onDelete: Cascade)
+  jugador        Jugador?           @relation("EventoPartidoJugador", fields: [jugadorId], references: [id], onDelete: SetNull)
+  participante   Participante?      @relation("EventoPartidoParticipante", fields: [participanteId], references: [id], onDelete: SetNull)
+
+  @@index([torneoId, tipo, createdAt])
+  @@index([partidoId, tipo])
+  @@index([jugadorId, tipo])
+}
+
+model FechaCompetencia {
+  id        String                 @id @default(cuid())
+  torneoId  String
+  numero    Int
+  inicio    DateTime?
+  fin       DateTime?
+  estado    EstadoFechaCompetencia @default(PROGRAMADA)
+  createdAt DateTime               @default(now())
+  updatedAt DateTime               @updatedAt
+  torneo    Torneo                 @relation(fields: [torneoId], references: [id], onDelete: Cascade)
+  partidos  Partido[]
+
+  @@unique([torneoId, numero])
+  @@index([torneoId, estado, inicio])
+}
+
+model Categoria {
+  id            String         @id @default(cuid())
+  torneoId      String
+  nombre        String
+  nivel         Int
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  torneo        Torneo         @relation(fields: [torneoId], references: [id], onDelete: Cascade)
+  participantes Participante[]
+
+  @@index([torneoId, nivel])
+}
+
+model RankingConfig {
+  torneoId            String   @id
+  campeon             Int      @default(100)
+  subcampeon          Int      @default(70)
+  semifinalista       Int      @default(50)
+  cuartofinalista     Int      @default(35)
+  octavos             Int      @default(20)
+  dieciseisavos       Int      @default(10)
+  faseGrupos          Int      @default(5)
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt
+  torneo              Torneo   @relation(fields: [torneoId], references: [id], onDelete: Cascade)
 }
