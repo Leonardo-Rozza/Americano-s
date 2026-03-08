@@ -194,9 +194,3 @@ Credenciales iniciales del script:
 
 - `username`: `admin`
 - `password`: `admin123`
-
-2. Script manual para cualquier usuario:
-
-```bash
-npm run user:create -- --username=user-name --password=miPasswordSegura
-```
