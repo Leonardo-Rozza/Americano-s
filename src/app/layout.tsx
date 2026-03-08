@@ -1,53 +1,53 @@
-import type { Metadata } from "next";
-import { Barlow, JetBrains_Mono } from "next/font/google";
-import { ToastProvider } from "@/components/ui/ToastProvider";
-import "./globals.css";
+import { ToastProvider } from '@/components/ui/ToastProvider';
+import type { Metadata } from 'next';
+import { Barlow, JetBrains_Mono } from 'next/font/google';
+import './globals.css';
 
 const barlow = Barlow({
-  variable: "--font-barlow",
-  weight: ["400", "500", "600", "700", "800"],
-  subsets: ["latin"],
+  variable: '--font-barlow',
+  weight: ['400', '500', '600', '700', '800'],
+  subsets: ['latin'],
 });
 
 const jetbrainsMono = JetBrains_Mono({
-  variable: "--font-jetbrains-mono",
-  subsets: ["latin"],
+  variable: '--font-jetbrains-mono',
+  subsets: ['latin'],
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://americano-s.vercel.app"),
+  metadataBase: new URL('https://americano-s.vercel.app'),
   title: {
     default: "Americano's | Torneos de Padel",
     template: "%s | Americano's",
   },
   description:
-    "Organiza torneos de padel tipo americano con grupos, ranking, desempates y bracket eliminatorio.",
+    'Organiza torneos de padel tipo americano con grupos, ranking, desempates y bracket eliminatorio.',
   applicationName: "Americano's",
   keywords: [
-    "torneos de padel",
-    "padel americano",
-    "organizador de torneos",
-    "ranking padel",
-    "bracket padel",
+    'torneos de padel',
+    'padel americano',
+    'organizador de torneos',
+    'ranking padel',
+    'bracket padel',
   ],
   alternates: {
-    canonical: "/dashboard",
+    canonical: '/dashboard',
   },
   robots: {
     index: true,
     follow: true,
   },
   openGraph: {
-    type: "website",
-    locale: "es_AR",
-    url: "https://americano-s.vercel.app/dashboard",
+    type: 'website',
+    locale: 'es_AR',
+    url: 'https://americano-s.vercel.app/dashboard',
     title: "Americano's | Torneos de Padel",
     description:
-      "Gestiona torneos con grupos, ranking automatico, desempates y bracket en una sola app.",
+      'Gestiona torneos con grupos, ranking automatico, desempates y bracket en una sola app.',
     siteName: "Americano's",
     images: [
       {
-        url: "/opengraph-image",
+        url: 'opengraph-image.png',
         width: 1200,
         height: 630,
         alt: "Americano's - Gestion de torneos de padel",
@@ -55,11 +55,11 @@ export const metadata: Metadata = {
     ],
   },
   twitter: {
-    card: "summary_large_image",
+    card: 'summary_large_image',
     title: "Americano's | Torneos de Padel",
     description:
-      "Gestiona torneos con grupos, ranking automatico, desempates y bracket en una sola app.",
-    images: ["/opengraph-image"],
+      'Gestiona torneos con grupos, ranking automatico, desempates y bracket en una sola app.',
+    images: ['/opengraph-image.png'],
   },
 };
 
