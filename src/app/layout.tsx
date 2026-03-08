@@ -3,6 +3,8 @@ import type { Metadata } from 'next';
 import { Barlow, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 
+const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://americano-s.vercel.app';
+
 const barlow = Barlow({
   variable: '--font-barlow',
   weight: ['400', '500', '600', '700', '800'],
@@ -15,7 +17,7 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL('https://americano-s.vercel.app'),
+  metadataBase: new URL(siteUrl),
   title: {
     default: "Americano's | Torneos de Padel",
     template: "%s | Americano's",
@@ -31,7 +33,7 @@ export const metadata: Metadata = {
     'bracket padel',
   ],
   alternates: {
-    canonical: '/dashboard',
+    canonical: '/',
   },
   robots: {
     index: true,
@@ -40,16 +42,16 @@ export const metadata: Metadata = {
   openGraph: {
     type: 'website',
     locale: 'es_AR',
-    url: 'https://americano-s.vercel.app/dashboard',
+    url: '/',
     title: "Americano's | Torneos de Padel",
     description:
       'Gestiona torneos con grupos, ranking automatico, desempates y bracket en una sola app.',
     siteName: "Americano's",
     images: [
       {
-        url: 'opengraph-image.png',
-        width: 1200,
-        height: 630,
+        url: '/opengraph-image.png',
+        width: 1216,
+        height: 582,
         alt: "Americano's - Gestion de torneos de padel",
       },
     ],
@@ -59,7 +61,7 @@ export const metadata: Metadata = {
     title: "Americano's | Torneos de Padel",
     description:
       'Gestiona torneos con grupos, ranking automatico, desempates y bracket en una sola app.',
-    images: ['/opengraph-image.png'],
+    images: [`${siteUrl}/opengraph-image.png`],
   },
 };
 
