@@ -10,6 +10,7 @@ import {
   normalizePlayerName,
   type PairMode,
 } from '@/lib/pair-utils';
+import { authFetch } from '@/lib/auth/auth-fetch';
 import { useRouter } from 'next/navigation';
 import { useMemo, useState } from 'react';
 
@@ -128,7 +129,7 @@ export function NewTournamentForm() {
     };
 
     try {
-      const response = await fetch('/api/torneo', {
+      const response = await authFetch('/api/torneo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

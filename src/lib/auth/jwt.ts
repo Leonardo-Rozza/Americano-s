@@ -6,8 +6,8 @@ const JWT_ALGORITHM = "HS256";
 export const ACCESS_TOKEN_COOKIE = "access_token";
 export const REFRESH_TOKEN_COOKIE = "refresh_token";
 
-export const ACCESS_TOKEN_TTL_SECONDS = 60 * 15;
-export const REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 24 * 7;
+export const ACCESS_TOKEN_TTL_SECONDS = 60 * 60;        // 1 hora
+export const REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 5;  // 5 horas
 
 const JWT_ISSUER = process.env.JWT_ISSUER ?? "torneos-americanos";
 const JWT_AUDIENCE = process.env.JWT_AUDIENCE ?? "torneos-americanos-app";

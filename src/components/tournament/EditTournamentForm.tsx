@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useToast } from "@/components/ui/ToastProvider";
+import { authFetch } from "@/lib/auth/auth-fetch";
 import {
   areSamePlayers,
   buildPairName,
@@ -137,7 +138,7 @@ export function EditTournamentForm({
     setSubmitting(true);
     setError(null);
     try {
-      const response = await fetch(`/api/torneo/${torneoId}`, {
+      const response = await authFetch(`/api/torneo/${torneoId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

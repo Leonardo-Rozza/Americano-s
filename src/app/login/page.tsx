@@ -8,7 +8,13 @@ function resolveNextPath(raw: string | undefined): string {
   if (!raw) {
     return "/dashboard";
   }
+  if (raw.length > 1024) {
+    return "/dashboard";
+  }
   if (!raw.startsWith("/") || raw.startsWith("//")) {
+    return "/dashboard";
+  }
+  if (raw.startsWith("/api/")) {
     return "/dashboard";
   }
   if (raw.startsWith("/login")) {

@@ -6,6 +6,7 @@ import { GroupCard } from "@/components/tournament/GroupCard";
 import { ParejaName } from "@/components/tournament/ParejaName";
 import { ScoreInput } from "@/components/tournament/ScoreInput";
 import { useToast } from "@/components/ui/ToastProvider";
+import { authFetch } from "@/lib/auth/auth-fetch";
 import { isValidMatchScore, mergeScoresKeepingDrafts, parseDraftScore } from "@/lib/score-utils";
 
 type Pair = {
@@ -169,7 +170,7 @@ export function GroupStageClient({ torneo: initialTorneo, readOnly = false }: Gr
     setMatchSaveState((current) => ({ ...current, [match.id]: "saving" }));
     setSavingId(match.id);
     try {
-      const response = await fetch(`/api/torneo/${torneo.id}/resultado-grupo`, {
+      const response = await authFetch(`/api/torneo/${torneo.id}/resultado-grupo`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -223,7 +224,7 @@ export function GroupStageClient({ torneo: initialTorneo, readOnly = false }: Gr
   async function handleRanking() {
     setLoadingRanking(true);
     try {
-      const response = await fetch(`/api/torneo/${torneo.id}/ranking`, {
+      const response = await authFetch(`/api/torneo/${torneo.id}/ranking`, {
         method: "POST",
       });
       const payload = (await response.json()) as

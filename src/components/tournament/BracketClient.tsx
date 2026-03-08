@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { ScoreInput } from "@/components/tournament/ScoreInput";
 import { useToast } from "@/components/ui/ToastProvider";
+import { authFetch } from "@/lib/auth/auth-fetch";
 import { isValidMatchScore, mergeScoresKeepingDrafts, parseDraftScore } from "@/lib/score-utils";
 
 type Pair = {
@@ -184,7 +185,7 @@ export function BracketClient({
     setMatchSaveState((current) => ({ ...current, [match.id]: "saving" }));
     setSavingMatch(match.id);
     try {
-      const response = await fetch(`/api/torneo/${torneoId}/resultado-bracket`, {
+      const response = await authFetch(`/api/torneo/${torneoId}/resultado-bracket`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

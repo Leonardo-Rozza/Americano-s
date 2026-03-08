@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { useToast } from "@/components/ui/ToastProvider";
+import { authFetch } from "@/lib/auth/auth-fetch";
 
 type DeleteTorneoButtonProps = {
   torneoId: string;
@@ -18,7 +19,7 @@ export function DeleteTorneoButton({ torneoId, torneoNombre }: DeleteTorneoButto
   async function confirmDelete() {
     setLoading(true);
     try {
-      const response = await fetch(`/api/torneo/${torneoId}`, {
+      const response = await authFetch(`/api/torneo/${torneoId}`, {
         method: "DELETE",
       });
       const payload = (await response.json()) as

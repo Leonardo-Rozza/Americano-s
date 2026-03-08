@@ -30,7 +30,6 @@ async function main() {
   console.log("Usuario inicial listo:", {
     id: user.id,
     username: user.username,
-    password: plainPassword,
   });
 }
 

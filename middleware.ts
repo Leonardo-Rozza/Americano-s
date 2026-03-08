@@ -1,13 +1,14 @@
 import { NextResponse, type NextRequest } from "next/server";
-import { ACCESS_TOKEN_COOKIE, tryVerifyAccessToken } from "@/lib/auth/jwt";
-
-function isApiPath(pathname: string): boolean {
-  return pathname.startsWith("/api/");
-}
+import {
+  ACCESS_TOKEN_COOKIE,
+  REFRESH_TOKEN_COOKIE,
+  tryVerifyAccessToken,
+} from "@/lib/auth/jwt";
 
 export async function middleware(request: NextRequest) {
   const { pathname, search } = request.nextUrl;
   const accessToken = request.cookies.get(ACCESS_TOKEN_COOKIE)?.value;
+  const refreshToken = request.cookies.get(REFRESH_TOKEN_COOKIE)?.value;
   const session = accessToken ? await tryVerifyAccessToken(accessToken) : null;
 
   if (pathname === "/login") {
@@ -17,17 +18,19 @@ export async function middleware(request: NextRequest) {
     return NextResponse.next();
   }
 
-  if (!session) {
-    if (isApiPath(pathname)) {
-      return NextResponse.json({ success: false, error: "No autenticado." }, { status: 401 });
-    }
-
-    const loginUrl = new URL("/login", request.url);
-    loginUrl.searchParams.set("next", `${pathname}${search}`);
-    return NextResponse.redirect(loginUrl);
+  if (session) {
+    return NextResponse.next();
   }
 
-  return NextResponse.next();
+  if (refreshToken) {
+    const refreshRedirectUrl = new URL("/api/auth/refresh-redirect", request.url);
+    refreshRedirectUrl.searchParams.set("next", `${pathname}${search}`);
+    return NextResponse.redirect(refreshRedirectUrl);
+  }
+
+  const loginUrl = new URL("/login", request.url);
+  loginUrl.searchParams.set("next", `${pathname}${search}`);
+  return NextResponse.redirect(loginUrl);
 }
 
 export const config = {
@@ -39,7 +42,5 @@ export const config = {
     "/torneos/:path*",
     "/torneo",
     "/torneo/:path*",
-    "/api/torneo",
-    "/api/torneo/:path*",
   ],
 };

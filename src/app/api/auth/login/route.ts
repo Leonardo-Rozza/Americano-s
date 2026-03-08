@@ -2,6 +2,12 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { fail, fromUnknownError, ok, parseJson } from "@/lib/api";
 import { signAccessToken, signRefreshToken, setAuthCookies } from "@/lib/auth/jwt";
+import { assertSameOrigin } from "@/lib/auth/csrf";
+import {
+  assertLoginAttemptAllowed,
+  buildLoginRateLimitKey,
+  clearLoginRateLimit,
+} from "@/lib/auth/login-rate-limit";
 import { createAuthSession } from "@/lib/auth/session";
 import { verifyPassword } from "@/lib/auth/password";
 
@@ -16,13 +22,23 @@ const INVALID_CREDENTIALS_MESSAGE = "Usuario o contraseña inválidos.";
 
 export async function POST(request: Request) {
   try {
+    assertSameOrigin(request);
+
     const parsed = await parseJson(request, loginSchema);
     if (!parsed.success) {
       return parsed.response;
     }
 
-    const user = await db.user.findUnique({
-      where: { username: parsed.data.username },
+    const rateLimitKey = buildLoginRateLimitKey(request, parsed.data.username);
+    assertLoginAttemptAllowed(rateLimitKey);
+
+    const user = await db.user.findFirst({
+      where: {
+        username: {
+          equals: parsed.data.username,
+          mode: "insensitive",
+        },
+      },
     });
     if (!user) {
       return fail(INVALID_CREDENTIALS_MESSAGE, 401);
@@ -48,6 +64,7 @@ export async function POST(request: Request) {
       userId: user.id,
       refreshToken,
     });
+    clearLoginRateLimit(rateLimitKey);
 
     const response = ok({
       user: {

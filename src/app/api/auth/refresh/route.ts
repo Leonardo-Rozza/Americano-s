@@ -10,9 +10,12 @@ import {
 import { db } from "@/lib/db";
 import { revokeAuthSession, rotateAuthSession } from "@/lib/auth/session";
 import { verifySecret } from "@/lib/auth/password";
+import { assertSameOrigin } from "@/lib/auth/csrf";
 
 export async function POST(request: Request) {
   try {
+    assertSameOrigin(request);
+
     const refreshToken = readCookieFromRequest(request, REFRESH_TOKEN_COOKIE);
     if (!refreshToken) {
       throw new ApiError("No autenticado.", 401);

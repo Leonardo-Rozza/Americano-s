@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/ToastProvider";
+import { authFetch } from "@/lib/auth/auth-fetch";
 
 type GoToBracketButtonProps = {
   torneoId: string;
@@ -23,7 +24,7 @@ export function GoToBracketButton({ torneoId, hasBracket, className }: GoToBrack
 
     setLoading(true);
     try {
-      const response = await fetch(`/api/torneo/${torneoId}/bracket`, {
+      const response = await authFetch(`/api/torneo/${torneoId}/bracket`, {
         method: "POST",
       });
       const payload = (await response.json()) as

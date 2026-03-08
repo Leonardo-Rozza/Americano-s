@@ -3,6 +3,7 @@
 import { useState, useTransition } from "react";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/ToastProvider";
+import { authFetch } from "@/lib/auth/auth-fetch";
 
 type TiedPair = {
   id: string;
@@ -84,7 +85,7 @@ export function DesempateClient({ torneoId, tiedPairs, byeSlots }: Props) {
   async function submit(winners: string[]) {
     setSaving(true);
     try {
-      const response = await fetch(`/api/torneo/${torneoId}/desempate`, {
+      const response = await authFetch(`/api/torneo/${torneoId}/desempate`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ method, byeWinnerIds: winners }),

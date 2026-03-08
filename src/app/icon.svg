@@ -1,18 +1,83 @@
-<svg width="512" height="512" viewBox="0 0 512 512" fill="none" xmlns="http://www.w3.org/2000/svg">
+<?xml version="1.0" encoding="UTF-8" standalone="no"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="2048" height="1117" viewBox="0 0 2048 1117">
   <defs>
-    <radialGradient id="ballGradient" cx="0" cy="0" r="1" gradientUnits="userSpaceOnUse" gradientTransform="translate(184 160) rotate(35) scale(380 380)">
-      <stop offset="0" stop-color="#F3FFB4" />
-      <stop offset="0.48" stop-color="#D4F454" />
-      <stop offset="1" stop-color="#A9CD1D" />
+    <radialGradient id="bg" cx="50%" cy="42%" r="70%">
+      <stop offset="0%" stop-color="#0d4b83"/>
+      <stop offset="55%" stop-color="#04285d"/>
+      <stop offset="100%" stop-color="#00133b"/>
     </radialGradient>
-    <linearGradient id="bgGradient" x1="64" y1="48" x2="448" y2="464" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#0B1530" />
-      <stop offset="1" stop-color="#122447" />
+
+    <radialGradient id="ballFill" cx="50%" cy="32%" r="75%">
+      <stop offset="0%" stop-color="#e3ff21"/>
+      <stop offset="62%" stop-color="#d6fb0b"/>
+      <stop offset="100%" stop-color="#bddb05"/>
+    </radialGradient>
+
+    <linearGradient id="ballRim" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#92ab12"/>
+      <stop offset="100%" stop-color="#8fa80a"/>
     </linearGradient>
+
+    <filter id="softGlow" x="-30%" y="-30%" width="160%" height="160%">
+      <feGaussianBlur stdDeviation="28" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+
+    <filter id="shadow" x="-30%" y="-30%" width="160%" height="160%">
+      <feDropShadow dx="0" dy="8" stdDeviation="18" flood-color="#00163a" flood-opacity="0.45"/>
+    </filter>
+
+    <filter id="starGlow" x="-200%" y="-200%" width="500%" height="500%">
+      <feGaussianBlur stdDeviation="2.5" result="blur"/>
+      <feMerge>
+        <feMergeNode in="blur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
   </defs>
-  <rect x="24" y="24" width="464" height="464" rx="116" fill="url(#bgGradient)" />
-  <circle cx="256" cy="256" r="176" fill="url(#ballGradient)" />
-  <path d="M180 108C128 148 98 214 98 282C98 350 128 415 180 456" stroke="#F8FFF2" stroke-width="20" stroke-linecap="round" />
-  <path d="M332 108C384 148 414 214 414 282C414 350 384 415 332 456" stroke="#F8FFF2" stroke-width="20" stroke-linecap="round" />
-  <circle cx="256" cy="256" r="176" stroke="rgba(255,255,255,0.35)" stroke-width="8" />
+
+  <!-- Background -->
+  <rect width="2048" height="1117" fill="url(#bg)"/>
+
+  <!-- Ball glow -->
+  <circle cx="1024" cy="482" r="470" fill="#b7ff00" opacity="0.12" filter="url(#softGlow)"/>
+
+  <!-- Ball -->
+  <g filter="url(#shadow)">
+    <circle cx="1024" cy="482" r="451" fill="url(#ballFill)" stroke="url(#ballRim)" stroke-width="14"/>
+    <circle cx="1024" cy="482" r="432" fill="none" stroke="#c7ef10" stroke-width="8" opacity="0.55"/>
+  </g>
+
+  <!-- Subtle highlight -->
+  <ellipse cx="1010" cy="360" rx="265" ry="185" fill="#f2ff77" opacity="0.18"/>
+
+  <!-- Tennis seams -->
+  <g fill="none" stroke-linecap="round">
+    <path d="M 683 198
+             C 826 329, 828 632, 673 811"
+          stroke="#d8d8d8" stroke-width="42" opacity="0.55"/>
+    <path d="M 688 192
+             C 839 325, 840 637, 682 817"
+          stroke="#ffffff" stroke-width="28"/>
+
+    <path d="M 1366 198
+             C 1223 329, 1221 632, 1376 811"
+          stroke="#d8d8d8" stroke-width="42" opacity="0.55"/>
+    <path d="M 1361 192
+             C 1210 325, 1209 637, 1367 817"
+          stroke="#ffffff" stroke-width="28"/>
+  </g>
+
+  <!-- Small decorative sparkle -->
+  <g transform="translate(1904 1022)" filter="url(#starGlow)">
+    <path d="M 0 -35
+             C 8 -16, 16 -8, 35 0
+             C 16 8, 8 16, 0 35
+             C -8 16, -16 8, -35 0
+             C -16 -8, -8 -16, 0 -35 Z"
+          fill="#d9dde2" opacity="0.9"/>
+  </g>
 </svg>

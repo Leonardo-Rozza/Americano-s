@@ -7,6 +7,7 @@ import {
   readCookieFromRequest,
   verifyAccessToken,
 } from "@/lib/auth/jwt";
+import { assertSameOrigin } from "@/lib/auth/csrf";
 
 export type AuthUser = {
   userId: string;
@@ -21,6 +22,8 @@ function mapPayloadToUser(payload: AccessTokenPayload): AuthUser {
 }
 
 export async function requireApiAuth(request: Request): Promise<AuthUser> {
+  assertSameOrigin(request);
+
   const token = readCookieFromRequest(request, ACCESS_TOKEN_COOKIE);
   if (!token) {
     throw new ApiError("No autenticado.", 401);
