@@ -42,3 +42,5 @@ export interface TiebreakInfo {
   parejas: Pareja[];
   byeSlotsInDispute: number;
 }
+export type TournamentSport = "PADEL" | "FUTBOL" | "TENIS";
+export type TournamentFormat = "AMERICANO" | "LARGO" | "LIGA";

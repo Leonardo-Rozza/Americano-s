@@ -1,9 +1,19 @@
+import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { getBracketSize } from "@/lib/tournament-engine/bracket";
 import { createGroups, getFixtureR1, getFixtureR2 } from "@/lib/tournament-engine/groups";
 import { computeRanking, detectTiebreaks } from "@/lib/tournament-engine/ranking";
 import { applyTiebreakToRanking, buildTiebreakProgress } from "@/lib/tournament-engine/tiebreak";
-import type { GrupoConfig, MatchResult, RankingEntry, Round1Result, TiebreakInfo } from "@/lib/tournament-engine/types";
+import { isTournamentCombinationEnabled } from "@/lib/tournament-catalog";
+import type {
+  GrupoConfig,
+  MatchResult,
+  RankingEntry,
+  Round1Result,
+  TiebreakInfo,
+  TournamentFormat,
+  TournamentSport,
+} from "@/lib/tournament-engine/types";
 import { ApiError } from "@/lib/api";
 import { buildGenericPairName, buildPairName, resolvePairDisplayName, type PairMode } from "@/lib/pair-utils";
 
@@ -198,13 +208,25 @@ export async function createTorneoWithGroups(
     metodoDesempate: "MONEDA" | "TIEBREAK";
     pairMode: PairMode;
     pairPlayers?: Array<{ jugador1: string; jugador2: string }>;
+    config?: Record<string, unknown>;
     groupConfig?: GrupoConfig;
+    deporte?: TournamentSport;
+    formato?: TournamentFormat;
   },
 ) {
+  const deporte = input.deporte ?? "PADEL";
+  const formato = input.formato ?? "AMERICANO";
+  if (!isTournamentCombinationEnabled(deporte, formato)) {
+    throw new ApiError("La combinacion seleccionada aun no esta habilitada en esta version.", 409);
+  }
+
   const torneo = await tx.torneo.create({
     data: {
       userId: input.userId,
       nombre: input.nombre,
+      deporte,
+      formato,
+      config: input.config as Prisma.InputJsonValue | undefined,
       tipo: "AMERICANO",
       estado: "GRUPOS",
       metodoDesempate: input.metodoDesempate,
@@ -212,71 +234,119 @@ export async function createTorneoWithGroups(
     },
   });
 
-  const createdPairs = [];
+  const createdPairs: Array<{ id: string; nombre: string }> = [];
   if (input.pairMode === "GENERIC") {
+    const pairsToCreate: Array<{
+      id: string;
+      torneoId: string;
+      nombre: string;
+      jugador1: string | null;
+      jugador2: string | null;
+    }> = [];
+
     for (let idx = 0; idx < input.numParejas; idx += 1) {
-      const pair = await tx.pareja.create({
-        data: {
-          torneoId: torneo.id,
-          nombre: buildGenericPairName(idx + 1),
-          jugador1: null,
-          jugador2: null,
-        },
+      const pairId = randomUUID();
+      const pairName = buildGenericPairName(idx + 1);
+
+      pairsToCreate.push({
+        id: pairId,
+        torneoId: torneo.id,
+        nombre: pairName,
+        jugador1: null,
+        jugador2: null,
       });
-      createdPairs.push(pair);
+
+      createdPairs.push({ id: pairId, nombre: pairName });
     }
+
+    await tx.pareja.createMany({ data: pairsToCreate });
   } else {
     if (!input.pairPlayers || input.pairPlayers.length !== input.numParejas) {
       throw new ApiError("Debes enviar exactamente numParejas parejas en modo personalizado.", 400);
     }
 
+    const pairsToCreate: Array<{
+      id: string;
+      torneoId: string;
+      nombre: string;
+      jugador1: string;
+      jugador2: string;
+    }> = [];
+
     for (const pairPlayers of input.pairPlayers) {
-      const pair = await tx.pareja.create({
-        data: {
-          torneoId: torneo.id,
-          jugador1: pairPlayers.jugador1,
-          jugador2: pairPlayers.jugador2,
-          nombre: buildPairName(pairPlayers.jugador1, pairPlayers.jugador2),
-        },
+      const pairId = randomUUID();
+      const pairName = buildPairName(pairPlayers.jugador1, pairPlayers.jugador2);
+
+      pairsToCreate.push({
+        id: pairId,
+        torneoId: torneo.id,
+        jugador1: pairPlayers.jugador1,
+        jugador2: pairPlayers.jugador2,
+        nombre: pairName,
       });
-      createdPairs.push(pair);
+
+      createdPairs.push({ id: pairId, nombre: pairName });
     }
+
+    await tx.pareja.createMany({ data: pairsToCreate });
   }
 
-  const shuffledGroups = createGroups(
-    createdPairs.map((pair) => ({ id: pair.id, nombre: pair.nombre })),
-    input.groupConfig,
-  );
-  for (let idx = 0; idx < shuffledGroups.length; idx += 1) {
-    const groupName = String.fromCharCode(65 + idx);
+  const groupedPairs = createGroups(createdPairs, input.groupConfig);
+  const dbGroupIdByName = new Map<string, string>();
+
+  for (let groupIdx = 0; groupIdx < groupedPairs.length; groupIdx += 1) {
+    const groupPairs = groupedPairs[groupIdx];
+    const groupName = String.fromCharCode(65 + groupIdx);
     const group = await tx.grupo.create({
       data: {
         torneoId: torneo.id,
         nombre: groupName,
       },
     });
+    dbGroupIdByName.set(groupName, group.id);
+    const pairIds = groupPairs.map((pair) => pair.id);
+    await tx.pareja.updateMany({
+      where: { id: { in: pairIds } },
+      data: { grupoId: group.id },
+    });
+  }
 
-    const groupPairs = shuffledGroups[idx];
-    for (const pair of groupPairs) {
-      await tx.pareja.update({
-        where: { id: pair.id },
-        data: { grupoId: group.id },
-      });
+  const groupMatchesToCreate: Array<{
+    grupoId: string;
+    fase: "RONDA1" | "RONDA2";
+    orden: number;
+    pareja1Id: string;
+    pareja2Id: string;
+  }> = [];
+
+  for (let groupIdx = 0; groupIdx < groupedPairs.length; groupIdx += 1) {
+    const groupPairs = groupedPairs[groupIdx];
+    const groupName = String.fromCharCode(65 + groupIdx);
+    const groupId = dbGroupIdByName.get(groupName);
+    if (!groupId) {
+      throw new ApiError("No se pudo mapear el grupo generado para el fixture.", 500);
     }
 
     const fixture = getFixtureR1(groupPairs.length);
-    for (let fixtureIdx = 0; fixtureIdx < fixture.length; fixtureIdx += 1) {
-      const [a, b] = fixture[fixtureIdx];
-      await tx.partidoGrupo.create({
-        data: {
-          grupoId: group.id,
-          fase: "RONDA1",
-          orden: fixtureIdx + 1,
-          pareja1Id: groupPairs[a].id,
-          pareja2Id: groupPairs[b].id,
-        },
+    for (let matchIdx = 0; matchIdx < fixture.length; matchIdx += 1) {
+      const [localSeed, visitanteSeed] = fixture[matchIdx];
+      const localPair = groupPairs[localSeed];
+      const visitantePair = groupPairs[visitanteSeed];
+
+      groupMatchesToCreate.push({
+        grupoId: groupId,
+        fase: "RONDA1",
+        orden: matchIdx + 1,
+        pareja1Id: localPair.id,
+        pareja2Id: visitantePair.id,
       });
     }
+  }
+
+  if (groupMatchesToCreate.length > 0) {
+    await tx.partidoGrupo.createMany({
+      data: groupMatchesToCreate,
+    });
   }
 
   return torneo.id;

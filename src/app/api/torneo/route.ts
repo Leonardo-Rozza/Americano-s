@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { fail, fromUnknownError, ok, parseJson } from "@/lib/api";
 import { createTorneoWithGroups, getTorneoOrThrow } from "@/lib/tournament-service";
 import { isValidGroupConfig } from "@/lib/tournament-engine/groups";
+import { isFormatSupportedForSport, isTournamentCombinationEnabled } from "@/lib/tournament-catalog";
 import { areSamePlayers, isValidPlayerName } from "@/lib/pair-utils";
 import { requireApiAuth } from "@/lib/auth/require-auth";
 
@@ -39,6 +40,8 @@ const pairInputSchema = z
 const createTorneoSchema = z
   .object({
     nombre: z.string().trim().min(1, "El nombre es requerido."),
+    deporte: z.enum(["PADEL", "FUTBOL", "TENIS"]).default("PADEL"),
+    formato: z.enum(["AMERICANO", "LARGO", "LIGA"]).default("AMERICANO"),
     numParejas: z
       .number()
       .int()
@@ -47,6 +50,7 @@ const createTorneoSchema = z
     metodoDesempate: z.enum(["MONEDA", "TIEBREAK"]).optional().default("MONEDA"),
     pairMode: z.enum(["CUSTOM", "GENERIC"]).default("CUSTOM"),
     parejas: z.array(pairInputSchema).optional(),
+    config: z.record(z.string(), z.unknown()).optional(),
     formatoGrupos: z
       .object({
         g3: z.number().int().min(0),
@@ -72,6 +76,27 @@ const createTorneoSchema = z
       });
     }
 
+    if (!isFormatSupportedForSport(value.deporte, value.formato)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "El formato seleccionado no esta disponible para ese deporte.",
+      });
+    }
+
+    if (!isTournamentCombinationEnabled(value.deporte, value.formato)) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "Por ahora solo esta habilitada la combinacion PADEL + AMERICANO.",
+      });
+    }
+
+    if (value.formato !== "AMERICANO" && value.formatoGrupos) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        message: "formatoGrupos solo aplica al formato AMERICANO.",
+      });
+    }
+
     if (value.formatoGrupos && !isValidGroupConfig(value.numParejas, value.formatoGrupos)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
@@ -88,16 +113,21 @@ export async function POST(request: Request) {
       return parsed.response;
     }
 
-    const torneoId = await db.$transaction((tx) =>
-      createTorneoWithGroups(tx, {
-        userId: authUser.userId,
-        nombre: parsed.data.nombre,
-        numParejas: parsed.data.numParejas,
-        metodoDesempate: parsed.data.metodoDesempate,
-        pairMode: parsed.data.pairMode,
-        pairPlayers: parsed.data.parejas,
-        groupConfig: parsed.data.formatoGrupos,
-      }),
+    const torneoId = await db.$transaction(
+      (tx) =>
+        createTorneoWithGroups(tx, {
+          userId: authUser.userId,
+          nombre: parsed.data.nombre,
+          numParejas: parsed.data.numParejas,
+          metodoDesempate: parsed.data.metodoDesempate,
+          pairMode: parsed.data.pairMode,
+          pairPlayers: parsed.data.parejas,
+          config: parsed.data.config,
+          groupConfig: parsed.data.formatoGrupos,
+          deporte: parsed.data.deporte,
+          formato: parsed.data.formato,
+        }),
+      { maxWait: 10000, timeout: 20000 },
     );
 
     const torneo = await getTorneoOrThrow(db, torneoId, authUser.userId);

@@ -13,7 +13,7 @@ export default function NewTorneoPage() {
         </Link>
         <h1 className="mt-2 text-4xl font-extrabold tracking-tight text-[var(--text)]">Nuevo Torneo</h1>
         <p className="mt-2 text-sm text-[var(--text-muted)]">
-          Configura cantidad de parejas, método de desempate y generación de grupos.
+          Elegi deporte, formato y luego completa la configuracion del torneo.
         </p>
       </header>
 
