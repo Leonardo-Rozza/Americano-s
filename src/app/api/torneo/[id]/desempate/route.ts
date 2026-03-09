@@ -28,6 +28,9 @@ export async function POST(request: Request, { params }: RouteParams) {
       if (torneo.userId !== authUser.userId) {
         throw new ApiError("Torneo no encontrado.", 404);
       }
+      if (torneo.formato === "LARGO") {
+        throw new ApiError("El formato largo no utiliza desempate manual.", 409);
+      }
       if (torneo.estado === "FINALIZADO") {
         throw new ApiError("El torneo esta finalizado y es solo lectura.", 409);
       }

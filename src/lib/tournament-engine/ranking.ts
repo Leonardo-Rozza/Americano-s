@@ -52,7 +52,17 @@ export function detectTiebreaks(ranking: RankingEntry[], numByes: number): Tiebr
     return null;
   }
 
+  // Solo hay desempate si el bloque empatado cruza el corte BYE/JUEGA.
+  // Si todo el bloque queda dentro de los BYEs, no hay disputa real.
+  if (end <= cut) {
+    return null;
+  }
+
   const byeSlotsInDispute = Math.min(numByes, end + 1) - start;
+  if (byeSlotsInDispute <= 0 || byeSlotsInDispute >= end - start + 1) {
+    return null;
+  }
+
   return {
     parejas: ranking.slice(start, end + 1).map((row) => row.pareja),
     byeSlotsInDispute,

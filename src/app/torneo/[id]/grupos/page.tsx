@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { GroupStageClient } from "@/components/tournament/GroupStageClient";
+import { LargoGroupStageClient } from "@/components/tournament/LargoGroupStageClient";
 import { requirePageAuth } from "@/lib/auth/require-auth";
 import { resolvePairDisplayName } from "@/lib/pair-utils";
 
@@ -32,19 +33,27 @@ export default async function GruposPage({ params }: RouteParams) {
     notFound();
   }
 
+  const torneoView = {
+    id: torneo.id,
+    nombre: torneo.nombre,
+    formato: torneo.formato,
+    config: (torneo.config as Record<string, unknown> | null) ?? null,
+    grupos: torneo.grupos.map((group) => ({
+      ...group,
+      parejas: group.parejas.map((pair) => ({
+        id: pair.id,
+        nombre: resolvePairDisplayName(pair),
+      })),
+    })),
+  };
+
+  if (torneo.formato === "LARGO" && torneo.deporte === "PADEL") {
+    return <LargoGroupStageClient torneo={torneoView} readOnly={torneo.estado === "FINALIZADO"} />;
+  }
+
   return (
     <GroupStageClient
-      torneo={{
-        id: torneo.id,
-        nombre: torneo.nombre,
-        grupos: torneo.grupos.map((group) => ({
-          ...group,
-          parejas: group.parejas.map((pair) => ({
-            id: pair.id,
-            nombre: resolvePairDisplayName(pair),
-          })),
-        })),
-      }}
+      torneo={torneoView}
       readOnly={torneo.estado === "FINALIZADO"}
     />
   );

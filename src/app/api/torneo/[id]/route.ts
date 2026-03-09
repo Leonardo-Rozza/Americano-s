@@ -2,7 +2,18 @@ import { z } from "zod";
 import { db } from "@/lib/db";
 import { ApiError, fromUnknownError, ok, parseJson } from "@/lib/api";
 import { getTorneoOrThrow } from "@/lib/tournament-service";
-import { areSamePlayers, buildGenericPairName, buildPairName, isValidPlayerName } from "@/lib/pair-utils";
+import {
+  computeLargoRankingByGroup,
+  getLargoClassified,
+  resolveLargoQualifiersByGroupSize,
+} from "@/lib/tournament-engine/largo";
+import {
+  areSamePlayers,
+  buildGenericPairName,
+  buildPairName,
+  isValidPlayerName,
+  resolvePairDisplayName,
+} from "@/lib/pair-utils";
 import { requireApiAuth } from "@/lib/auth/require-auth";
 
 type RouteParams = { params: Promise<{ id: string }> };
@@ -73,6 +84,34 @@ export async function GET(request: Request, { params }: RouteParams) {
     const authUser = await requireApiAuth(request);
     const { id } = await params;
     const torneo = await getTorneoOrThrow(db, id, authUser.userId);
+    if (torneo.formato === "LARGO" && torneo.deporte === "PADEL") {
+      const groupRankings = computeLargoRankingByGroup(
+        torneo.grupos.map((group) => ({
+          id: group.id,
+          nombre: group.nombre,
+          parejas: group.parejas.map((pair) => ({
+            id: pair.id,
+            nombre: resolvePairDisplayName(pair),
+          })),
+          partidos: group.partidos.map((match) => ({
+            pareja1Id: match.pareja1Id,
+            pareja2Id: match.pareja2Id,
+            completado: match.completado,
+            scoreJson: match.scoreJson,
+          })),
+        })),
+      );
+      const qualifiersByGroupSize = resolveLargoQualifiersByGroupSize(torneo.config);
+      const classified = getLargoClassified(groupRankings, qualifiersByGroupSize);
+      return ok({
+        ...torneo,
+        largoRanking: {
+          groups: groupRankings,
+          classified,
+          qualifiersByGroupSize,
+        },
+      });
+    }
     return ok(torneo);
   } catch (error) {
     return fromUnknownError(error, "No se pudo obtener el torneo.");

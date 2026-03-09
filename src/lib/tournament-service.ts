@@ -1,7 +1,13 @@
 import { randomUUID } from "node:crypto";
 import { Prisma, type PrismaClient } from "@prisma/client";
 import { getBracketSize } from "@/lib/tournament-engine/bracket";
-import { createGroups, getFixtureR1, getFixtureR2 } from "@/lib/tournament-engine/groups";
+import {
+  calcGroupsPrioritizing4,
+  createGroups,
+  getFixtureR1,
+  getFixtureR2,
+} from "@/lib/tournament-engine/groups";
+import { getLargoFixture } from "@/lib/tournament-engine/largo";
 import { computeRanking, detectTiebreaks } from "@/lib/tournament-engine/ranking";
 import { applyTiebreakToRanking, buildTiebreakProgress } from "@/lib/tournament-engine/tiebreak";
 import { isTournamentCombinationEnabled } from "@/lib/tournament-catalog";
@@ -220,14 +226,30 @@ export async function createTorneoWithGroups(
     throw new ApiError("La combinacion seleccionada aun no esta habilitada en esta version.", 409);
   }
 
+  const mergedConfig: Record<string, unknown> = {
+    ...(input.config ?? {}),
+  };
+  if (deporte === "PADEL" && formato === "LARGO") {
+    const rawQualifiers = mergedConfig.qualifiersByGroupSize;
+    const qualifiersRecord =
+      rawQualifiers && typeof rawQualifiers === "object"
+        ? (rawQualifiers as Record<string, unknown>)
+        : {};
+    mergedConfig.qualifiersByGroupSize = {
+      "3": 2,
+      "4": 3,
+      ...qualifiersRecord,
+    };
+  }
+
   const torneo = await tx.torneo.create({
     data: {
       userId: input.userId,
       nombre: input.nombre,
       deporte,
       formato,
-      config: input.config as Prisma.InputJsonValue | undefined,
-      tipo: "AMERICANO",
+      config: Object.keys(mergedConfig).length > 0 ? (mergedConfig as Prisma.InputJsonValue) : undefined,
+      tipo: formato === "LARGO" ? "LARGO" : "AMERICANO",
       estado: "GRUPOS",
       metodoDesempate: input.metodoDesempate,
       fecha: new Date(),
@@ -291,7 +313,8 @@ export async function createTorneoWithGroups(
     await tx.pareja.createMany({ data: pairsToCreate });
   }
 
-  const groupedPairs = createGroups(createdPairs, input.groupConfig);
+  const defaultConfig = formato === "LARGO" ? calcGroupsPrioritizing4(createdPairs.length) : undefined;
+  const groupedPairs = createGroups(createdPairs, input.groupConfig ?? defaultConfig);
   const dbGroupIdByName = new Map<string, string>();
 
   for (let groupIdx = 0; groupIdx < groupedPairs.length; groupIdx += 1) {
@@ -327,7 +350,7 @@ export async function createTorneoWithGroups(
       throw new ApiError("No se pudo mapear el grupo generado para el fixture.", 500);
     }
 
-    const fixture = getFixtureR1(groupPairs.length);
+    const fixture = formato === "LARGO" ? getLargoFixture(groupPairs.length) : getFixtureR1(groupPairs.length);
     for (let matchIdx = 0; matchIdx < fixture.length; matchIdx += 1) {
       const [localSeed, visitanteSeed] = fixture[matchIdx];
       const localPair = groupPairs[localSeed];

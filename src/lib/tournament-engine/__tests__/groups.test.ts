@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { calcGroups, createGroups, getFixtureR1, getFixtureR2, isValidGroupConfig, listGroupConfigs } from "../groups";
+import {
+  calcGroups,
+  calcGroupsPrioritizing4,
+  createGroups,
+  getFixtureR1,
+  getFixtureR2,
+  isValidGroupConfig,
+  listGroupConfigs,
+} from "../groups";
 import type { Pareja } from "../types";
 
 function makeParejas(n: number): Pareja[] {
@@ -16,6 +24,10 @@ describe("groups", () => {
 
   it("calcGroups resuelve 13 parejas como 3 grupos de 3 y 1 de 4", () => {
     expect(calcGroups(13)).toEqual({ g3: 3, g4: 1 });
+  });
+
+  it("calcGroupsPrioritizing4 prioriza grupos de 4 cuando hay alternativa", () => {
+    expect(calcGroupsPrioritizing4(12)).toEqual({ g3: 0, g4: 3 });
   });
 
   it("listGroupConfigs devuelve alternativas validas para 12 parejas", () => {

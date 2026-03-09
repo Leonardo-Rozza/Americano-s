@@ -33,23 +33,15 @@ export function DesempateClient({ torneoId, tiedPairs, byeSlots }: Props) {
   const [saving, setSaving] = useState(false);
   const [, startTransition] = useTransition();
 
-  const isTwoPair = tiedPairs.length === 2;
-
   async function tossCoin(chosenMethod: Method) {
     setMethod(chosenMethod);
     setPhase("coin-spin");
     setSpinning(true);
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
-    if (isTwoPair) {
-      // Classic 1v1: randomly pick 1 winner
-      const winner = Math.random() < 0.5 ? tiedPairs[0].id : tiedPairs[1].id;
-      setByeWinnerIds([winner]);
-    } else {
-      // Bulk shuffle: pick first M winners
-      const shuffled = [...tiedPairs].sort(() => Math.random() - 0.5);
-      setByeWinnerIds(shuffled.slice(0, byeSlots).map((p) => p.id));
-    }
+    // Sortea exactamente los BYEs disputados (defensivo ante cualquier edge-case).
+    const shuffled = [...tiedPairs].sort(() => Math.random() - 0.5);
+    setByeWinnerIds(shuffled.slice(0, byeSlots).map((p) => p.id));
 
     setSpinning(false);
     setPhase("coin-result");
@@ -269,7 +261,7 @@ export function DesempateClient({ torneoId, tiedPairs, byeSlots }: Props) {
       </header>
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
-        {method === "moneda" && isTwoPair ? (
+        {method === "moneda" && byeWinnerIds.length === 1 ? (
           <div className="mb-4 flex flex-col items-center gap-3">
             <div className="coin coin-done h-20 w-20 rounded-full border-2 border-[var(--green)]/70">✓</div>
             <p className="text-sm font-semibold text-[var(--green)]">

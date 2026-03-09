@@ -25,6 +25,7 @@ const MIN_PAREJAS = 6;
 const MAX_PAREJAS = 30;
 const NAME_FORMAT_HELP = 'Solo letras y espacios. Numero opcional al final (ej: Perez 2).';
 const STEP_LABELS = ['Deporte', 'Formato', 'Configuracion'] as const;
+const LARGO_QUALIFIERS_BY_GROUP_SIZE = { '3': 2, '4': 3 } as const;
 
 type PairDraft = {
   jugador1: string;
@@ -46,6 +47,21 @@ function formatLabel(config: { g3: number; g4: number }) {
   return `${config.g3}x3 + ${config.g4}x4`;
 }
 
+function pickPreferredGroupConfig(
+  options: Array<{ g3: number; g4: number }>,
+  formato: TournamentFormat,
+) {
+  if (options.length === 0) {
+    return null;
+  }
+
+  if (formato === 'LARGO') {
+    return options[options.length - 1];
+  }
+
+  return options[0];
+}
+
 export function NewTournamentForm() {
   const router = useRouter();
   const { showToast } = useToast();
@@ -63,7 +79,7 @@ export function NewTournamentForm() {
   const [footballHalfDuration, setFootballHalfDuration] = useState(20);
   const [footballHomeAway, setFootballHomeAway] = useState(false);
   const [tennisMode, setTennisMode] = useState<TennisMode>('SINGLES');
-  const [superTiebreakThirdSet, setSuperTiebreakThirdSet] = useState(true);
+  const [superTiebreakThirdSet, setSuperTiebreakThirdSet] = useState(false);
 
   const [submitting, setSubmitting] = useState(false);
   const [attemptedSubmit, setAttemptedSubmit] = useState(false);
@@ -74,15 +90,40 @@ export function NewTournamentForm() {
   const selectedFormat =
     TOURNAMENT_FORMAT_OPTIONS.find((option) => option.id === formato) ?? TOURNAMENT_FORMAT_OPTIONS[0];
   const groupOptions = useMemo(() => listGroupConfigs(numParejas), [numParejas]);
+  const displayedGroupOptions = useMemo(() => {
+    if (formato !== 'LARGO') {
+      return groupOptions;
+    }
+    return [...groupOptions].sort((a, b) => b.g4 - a.g4 || a.g3 - b.g3);
+  }, [formato, groupOptions]);
   const combinationEnabled = isTournamentCombinationEnabled(deporte, formato);
-  const requiresPairDetails = deporte === 'PADEL' && formato === 'AMERICANO';
+  const usesGroupZones = deporte === 'PADEL' && (formato === 'AMERICANO' || formato === 'LARGO');
+  const requiresPairDetails = usesGroupZones;
   const participantLabel = selectedSport.participantsLabel;
 
   const preview = useMemo(() => {
-    const bracketSize = getBracketSize(numParejas);
-    const byes = bracketSize - numParejas;
-    return { ...groupConfig, bracketSize, byes };
-  }, [groupConfig, numParejas]);
+    if (!usesGroupZones) {
+      return {
+        ...groupConfig,
+        qualifiers: 0,
+        bracketSize: 0,
+        byes: 0,
+      };
+    }
+
+    if (formato === 'AMERICANO') {
+      const bracketSize = getBracketSize(numParejas);
+      const byes = bracketSize - numParejas;
+      return { ...groupConfig, qualifiers: numParejas, bracketSize, byes };
+    }
+
+    const qualifiers =
+      groupConfig.g3 * LARGO_QUALIFIERS_BY_GROUP_SIZE['3'] +
+      groupConfig.g4 * LARGO_QUALIFIERS_BY_GROUP_SIZE['4'];
+    const bracketSize = getBracketSize(qualifiers);
+    const byes = bracketSize - qualifiers;
+    return { ...groupConfig, qualifiers, bracketSize, byes };
+  }, [formato, groupConfig, numParejas, usesGroupZones]);
 
   const normalizedParejas = useMemo(
     () =>
@@ -137,6 +178,7 @@ export function NewTournamentForm() {
     if (deporte === 'PADEL' && formato === 'LARGO') {
       return {
         superTiebreakTercerSet: superTiebreakThirdSet,
+        qualifiersByGroupSize: LARGO_QUALIFIERS_BY_GROUP_SIZE,
       };
     }
     return {};
@@ -146,10 +188,14 @@ export function NewTournamentForm() {
     const value = Math.max(MIN_PAREJAS, Math.min(MAX_PAREJAS, next));
     setNumParejas(value);
     const nextOptions = listGroupConfigs(value);
+    const preferred = pickPreferredGroupConfig(nextOptions, formato);
     if (nextOptions.length > 0) {
-      setGroupConfig((current) =>
-        nextOptions.some((option) => sameFormat(option, current)) ? current : nextOptions[0],
-      );
+      setGroupConfig((current) => {
+        if (formato === 'LARGO' && preferred) {
+          return preferred;
+        }
+        return nextOptions.some((option) => sameFormat(option, current)) ? current : (preferred ?? nextOptions[0]);
+      });
     }
     setParejas((current) =>
       Array.from({ length: value }, (_, idx) => current[idx] ?? { jugador1: '', jugador2: '' }),
@@ -167,6 +213,11 @@ export function NewTournamentForm() {
       const fallback = TOURNAMENT_FORMAT_OPTIONS.find((option) => option.supportedSports.includes(next));
       if (fallback) {
         setFormato(fallback.id);
+        const fallbackOptions = listGroupConfigs(numParejas);
+        const preferred = pickPreferredGroupConfig(fallbackOptions, fallback.id);
+        if (preferred) {
+          setGroupConfig(preferred);
+        }
       }
     }
 
@@ -177,6 +228,16 @@ export function NewTournamentForm() {
 
   function selectFormat(next: TournamentFormat) {
     setFormato(next);
+    const nextOptions = listGroupConfigs(numParejas);
+    const preferred = pickPreferredGroupConfig(nextOptions, next);
+    if (preferred) {
+      setGroupConfig((current) => {
+        if (next === 'LARGO') {
+          return preferred;
+        }
+        return nextOptions.some((option) => sameFormat(option, current)) ? current : preferred;
+      });
+    }
     if (step < 3) {
       setStep(3);
     }
@@ -190,7 +251,7 @@ export function NewTournamentForm() {
 
     if (!combinationEnabled) {
       setSubmitting(false);
-      setError('La combinacion elegida todavia no esta habilitada. Hoy solo funciona PADEL + AMERICANO.');
+      setError('La combinacion elegida todavia no esta habilitada. Hoy funcionan PADEL + AMERICANO y PADEL + LARGO.');
       showToast({ message: 'La combinacion seleccionada estara disponible en la siguiente fase.', tone: 'error' });
       return;
     }
@@ -213,7 +274,7 @@ export function NewTournamentForm() {
             parejas: normalizedParejas,
           }
         : {}),
-      ...(formato === 'AMERICANO'
+      ...(usesGroupZones
         ? {
             formatoGrupos: groupConfig,
           }
@@ -422,13 +483,13 @@ export function NewTournamentForm() {
               className="mt-4 w-full accent-[var(--accent)]"
             />
 
-            {formato === 'AMERICANO' ? (
+            {usesGroupZones ? (
               <div className="mt-5">
                 <p className="mb-2 text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-dim)]">
-                  Formato de grupos
+                  Formato de zonas
                 </p>
                 <div className="grid gap-2 sm:grid-cols-2">
-                  {groupOptions.map((option) => {
+                  {displayedGroupOptions.map((option) => {
                     const active = sameFormat(option, groupConfig);
                     return (
                       <button
@@ -443,8 +504,17 @@ export function NewTournamentForm() {
                       >
                         <p className="text-sm font-bold">{formatLabel(option)}</p>
                         <p className="text-xs text-[var(--text-dim)]">
-                          {option.g4 > 0 ? 'Incluye grupos de 4 (con Ronda 2).' : 'Solo grupos de 3.'}
+                          {option.g4 > 0
+                            ? formato === 'AMERICANO'
+                              ? 'Incluye grupos de 4 (con Ronda 2).'
+                              : 'Incluye zonas de 4 con todos contra todos.'
+                            : 'Solo zonas de 3.'}
                         </p>
+                        {formato === 'LARGO' && option.g4 > 0 ? (
+                          <p className="mt-1 text-[11px] font-semibold text-[var(--accent)]">
+                            Recomendado para largo
+                          </p>
+                        ) : null}
                       </button>
                     );
                   })}
@@ -453,18 +523,22 @@ export function NewTournamentForm() {
             ) : null}
           </section>
 
-          {formato === 'AMERICANO' ? (
+          {usesGroupZones ? (
             <section className="grid gap-4 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 sm:grid-cols-3">
               <div>
-                <p className="text-xs uppercase tracking-[0.14em] text-[var(--text-dim)]">Grupos</p>
+                <p className="text-xs uppercase tracking-[0.14em] text-[var(--text-dim)]">Zonas</p>
                 <p className="mt-1 text-2xl font-black text-[var(--text)]">
                   {preview.g3}x3 <span className="text-[var(--text-dim)]">+ </span>
                   {preview.g4}x4
                 </p>
               </div>
               <div>
-                <p className="text-xs uppercase tracking-[0.14em] text-[var(--text-dim)]">Cuadro</p>
-                <p className="mt-1 text-2xl font-black text-[var(--accent)]">{preview.bracketSize}</p>
+                <p className="text-xs uppercase tracking-[0.14em] text-[var(--text-dim)]">
+                  {formato === 'AMERICANO' ? 'Cuadro' : 'Clasifican'}
+                </p>
+                <p className="mt-1 text-2xl font-black text-[var(--accent)]">
+                  {formato === 'AMERICANO' ? preview.bracketSize : preview.qualifiers}
+                </p>
               </div>
               <div>
                 <p className="text-xs uppercase tracking-[0.14em] text-[var(--text-dim)]">BYEs</p>

@@ -8,6 +8,8 @@ export type BracketProgressMatch = {
   ganadorId: string | null;
   gamesPareja1: number | null;
   gamesPareja2: number | null;
+  scoreJson?: unknown | null;
+  walkover?: boolean;
   completado: boolean;
 };
 
@@ -43,6 +45,8 @@ export function syncBracketProgression(
           current.ganadorId = onlyTeam;
           current.gamesPareja1 = null;
           current.gamesPareja2 = null;
+          current.scoreJson = null;
+          current.walkover = false;
         } else if (current.pareja1Id && current.pareja2Id) {
           current.esBye = false;
           const winnerIsValid =
@@ -53,6 +57,8 @@ export function syncBracketProgression(
             current.ganadorId = null;
             current.gamesPareja1 = null;
             current.gamesPareja2 = null;
+            current.scoreJson = null;
+            current.walkover = false;
           }
         }
         continue;
@@ -76,6 +82,8 @@ export function syncBracketProgression(
           current.ganadorId = onlyTeam;
           current.gamesPareja1 = null;
           current.gamesPareja2 = null;
+          current.scoreJson = null;
+          current.walkover = false;
           continue;
         }
 
@@ -89,6 +97,8 @@ export function syncBracketProgression(
             current.ganadorId = null;
             current.gamesPareja1 = null;
             current.gamesPareja2 = null;
+            current.scoreJson = null;
+            current.walkover = false;
           }
           continue;
         }
@@ -102,6 +112,8 @@ export function syncBracketProgression(
       current.ganadorId = null;
       current.gamesPareja1 = null;
       current.gamesPareja2 = null;
+      current.scoreJson = null;
+      current.walkover = false;
     }
   }
 

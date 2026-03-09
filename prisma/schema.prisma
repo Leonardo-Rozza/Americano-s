@@ -160,6 +160,8 @@ model PartidoGrupo {
   pareja2Id    String
   gamesPareja1 Int?
   gamesPareja2 Int?
+  scoreJson    Json?
+  walkover     Boolean   @default(false)
   completado   Boolean   @default(false)
   grupo        Grupo     @relation(fields: [grupoId], references: [id], onDelete: Cascade)
   pareja1      Pareja    @relation("PartidoGrupoPareja1", fields: [pareja1Id], references: [id], onDelete: Restrict)
@@ -189,6 +191,8 @@ model BracketMatch {
   ganadorId    String?
   gamesPareja1 Int?
   gamesPareja2 Int?
+  scoreJson    Json?
+  walkover     Boolean  @default(false)
   completado   Boolean  @default(false)
   bracket      Bracket  @relation(fields: [bracketId], references: [id], onDelete: Cascade)
   pareja1      Pareja?  @relation("BracketMatchPareja1", fields: [pareja1Id], references: [id], onDelete: SetNull)

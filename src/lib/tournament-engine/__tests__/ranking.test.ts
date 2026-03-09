@@ -51,4 +51,17 @@ describe("ranking", () => {
       byeSlotsInDispute: 1,
     });
   });
+
+  it("detectTiebreaks no pide desempate si el empate no cruza el corte", () => {
+    const ranking = [
+      { pareja: parejas[0], gf: 20, gc: 10, diff: 10 },
+      { pareja: parejas[1], gf: 14, gc: 9, diff: 5 },
+      { pareja: parejas[2], gf: 13, gc: 8, diff: 5 },
+      { pareja: parejas[3], gf: 8, gc: 12, diff: -4 },
+    ];
+
+    // Los 3 primeros reciben BYE; el empate B/C queda dentro de los BYEs.
+    const tie = detectTiebreaks(ranking, 3);
+    expect(tie).toBeNull();
+  });
 });

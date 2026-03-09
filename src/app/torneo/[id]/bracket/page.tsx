@@ -2,6 +2,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { BracketClient } from "@/components/tournament/BracketClient";
+import { LargoBracketClient } from "@/components/tournament/LargoBracketClient";
 import { GoToBracketButton } from "@/components/tournament/GoToBracketButton";
 import { requirePageAuth } from "@/lib/auth/require-auth";
 import { resolvePairDisplayName } from "@/lib/pair-utils";
@@ -43,17 +44,34 @@ export default async function BracketPage({ params, searchParams }: RouteParams 
   return (
     <section>
       {torneo.bracket ? (
-        <BracketClient
-          torneoId={id}
-          torneoNombre={torneo.nombre}
-          pairs={torneo.parejas.map((pair) => ({ id: pair.id, nombre: resolvePairDisplayName(pair) }))}
-          readOnly={publicView || torneo.estado === "FINALIZADO"}
-          bracket={{
-            id: torneo.bracket.id,
-            totalRondas: torneo.bracket.totalRondas,
-            matches: torneo.bracket.matches,
-          }}
-        />
+        torneo.formato === "LARGO" && torneo.deporte === "PADEL" ? (
+          <LargoBracketClient
+            torneoId={id}
+            torneoNombre={torneo.nombre}
+            pairs={torneo.parejas.map((pair) => ({ id: pair.id, nombre: resolvePairDisplayName(pair) }))}
+            allowSuperTiebreakThirdSet={Boolean(
+              (torneo.config as Record<string, unknown> | null)?.superTiebreakTercerSet,
+            )}
+            readOnly={publicView || torneo.estado === "FINALIZADO"}
+            bracket={{
+              id: torneo.bracket.id,
+              totalRondas: torneo.bracket.totalRondas,
+              matches: torneo.bracket.matches,
+            }}
+          />
+        ) : (
+          <BracketClient
+            torneoId={id}
+            torneoNombre={torneo.nombre}
+            pairs={torneo.parejas.map((pair) => ({ id: pair.id, nombre: resolvePairDisplayName(pair) }))}
+            readOnly={publicView || torneo.estado === "FINALIZADO"}
+            bracket={{
+              id: torneo.bracket.id,
+              totalRondas: torneo.bracket.totalRondas,
+              matches: torneo.bracket.matches,
+            }}
+          />
+        )
       ) : (
         <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6">
           <h1 className="text-2xl font-extrabold text-[var(--text)]">Aun no hay cuadro generado</h1>

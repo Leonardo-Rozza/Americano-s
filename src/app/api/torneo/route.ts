@@ -86,14 +86,14 @@ const createTorneoSchema = z
     if (!isTournamentCombinationEnabled(value.deporte, value.formato)) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "Por ahora solo esta habilitada la combinacion PADEL + AMERICANO.",
+        message: "Por ahora solo estan habilitadas PADEL + AMERICANO y PADEL + LARGO.",
       });
     }
 
-    if (value.formato !== "AMERICANO" && value.formatoGrupos) {
+    if (!["AMERICANO", "LARGO"].includes(value.formato) && value.formatoGrupos) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        message: "formatoGrupos solo aplica al formato AMERICANO.",
+        message: "formatoGrupos solo aplica a formatos con zonas (AMERICANO o LARGO).",
       });
     }
 

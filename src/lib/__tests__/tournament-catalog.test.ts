@@ -5,9 +5,9 @@ import {
 } from "@/lib/tournament-catalog";
 
 describe("tournament-catalog", () => {
-  it("habilita solo PADEL + AMERICANO en este corte", () => {
+  it("habilita PADEL + AMERICANO y PADEL + LARGO en este corte", () => {
     expect(isTournamentCombinationEnabled("PADEL", "AMERICANO")).toBe(true);
-    expect(isTournamentCombinationEnabled("PADEL", "LARGO")).toBe(false);
+    expect(isTournamentCombinationEnabled("PADEL", "LARGO")).toBe(true);
     expect(isTournamentCombinationEnabled("FUTBOL", "AMERICANO")).toBe(false);
   });
 

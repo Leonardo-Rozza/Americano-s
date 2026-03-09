@@ -37,6 +37,15 @@ export function calcGroups(n: number): GrupoConfig {
   return options[0];
 }
 
+export function calcGroupsPrioritizing4(n: number): GrupoConfig {
+  const options = listGroupConfigs(n);
+  if (options.length === 0) {
+    throw new Error("No se pueden formar grupos validos con este numero de parejas.");
+  }
+
+  return options[options.length - 1];
+}
+
 function shuffle<T>(input: T[]): T[] {
   const out = [...input];
   for (let i = out.length - 1; i > 0; i -= 1) {

@@ -16,7 +16,7 @@ export type TournamentFormatOption = {
   supportedSports: TournamentSport[];
 };
 
-const ENABLED_COMBINATION_KEYS = new Set<string>(["PADEL:AMERICANO"]);
+const ENABLED_COMBINATION_KEYS = new Set<string>(["PADEL:AMERICANO", "PADEL:LARGO"]);
 
 export const TOURNAMENT_SPORT_OPTIONS: TournamentSportOption[] = [
   {

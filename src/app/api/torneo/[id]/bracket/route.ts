@@ -2,6 +2,12 @@ import { db } from "@/lib/db";
 import { ApiError, fromUnknownError, ok } from "@/lib/api";
 import { buildBracket, getBracketSize } from "@/lib/tournament-engine/bracket";
 import {
+  buildLargoBracket,
+  computeLargoRankingByGroup,
+  getLargoClassified,
+  resolveLargoQualifiersByGroupSize,
+} from "@/lib/tournament-engine/largo";
+import {
   areAllGroupMatchesComplete,
   collectGroupResults,
   makeGroupRivals,
@@ -45,22 +51,60 @@ export async function POST(request: Request, { params }: RouteParams) {
       throw new ApiError("Debes completar todos los partidos de grupos antes de generar el bracket.", 409);
     }
 
-    // Pure computation — no DB calls
-    const rankingBase = computeRanking(
-      torneo.parejas.map((pair) => ({ id: pair.id, nombre: resolvePairDisplayName(pair) })),
-      collectGroupResults(torneo.grupos),
-    );
-    const byes = getBracketSize(rankingBase.length) - rankingBase.length;
-    const tiebreaks = detectTiebreaks(rankingBase, byes);
-    const tiebreakResolution = resolveRankingWithTiebreak(rankingBase, tiebreaks, torneo.desempates);
-    if (tiebreakResolution.tiebreakPending) {
-      throw new ApiError("Hay desempates pendientes. Resolve eso antes de generar el bracket.", 409);
+    let rankedPairs: Array<{ id: string; nombre: string }> = [];
+    let largoClassified:
+      | ReturnType<typeof getLargoClassified>
+      | null = null;
+    if (torneo.formato === "LARGO") {
+      const groupRankings = computeLargoRankingByGroup(
+        torneo.grupos.map((group) => ({
+          id: group.id,
+          nombre: group.nombre,
+          parejas: group.parejas.map((pair) => ({
+            id: pair.id,
+            nombre: resolvePairDisplayName(pair),
+          })),
+          partidos: group.partidos.map((match) => ({
+            pareja1Id: match.pareja1Id,
+            pareja2Id: match.pareja2Id,
+            completado: match.completado,
+            scoreJson: match.scoreJson,
+          })),
+        })),
+      );
+      const qualifiersByGroupSize = resolveLargoQualifiersByGroupSize(torneo.config);
+      const classified = getLargoClassified(groupRankings, qualifiersByGroupSize);
+      if (classified.length < 2) {
+        throw new ApiError("No hay suficientes parejas clasificadas para generar eliminatoria.", 409);
+      }
+      largoClassified = classified;
+      rankedPairs = [...classified]
+        .sort((a, b) => {
+          if (a.position !== b.position) {
+            return a.position - b.position;
+          }
+          return a.groupName.localeCompare(b.groupName);
+        })
+        .map((item) => item.pareja);
+    } else {
+      const rankingBase = computeRanking(
+        torneo.parejas.map((pair) => ({ id: pair.id, nombre: resolvePairDisplayName(pair) })),
+        collectGroupResults(torneo.grupos),
+      );
+      const byes = getBracketSize(rankingBase.length) - rankingBase.length;
+      const tiebreaks = detectTiebreaks(rankingBase, byes);
+      const tiebreakResolution = resolveRankingWithTiebreak(rankingBase, tiebreaks, torneo.desempates);
+      if (tiebreakResolution.tiebreakPending) {
+        throw new ApiError("Hay desempates pendientes. Resolve eso antes de generar el bracket.", 409);
+      }
+      rankedPairs = tiebreakResolution.ranking.map((entry) => entry.pareja);
     }
 
-    const ranking = tiebreakResolution.ranking;
-    const rankedPairs = ranking.map((entry) => entry.pareja);
     const groupRivals = makeGroupRivals(torneo.grupos);
-    const rounds = buildBracket(rankedPairs, groupRivals);
+    const rounds =
+      torneo.formato === "LARGO" && largoClassified
+        ? buildLargoBracket(largoClassified, groupRivals)
+        : buildBracket(rankedPairs, groupRivals);
     const bracketSize = getBracketSize(rankedPairs.length);
     const totalRondas = Math.log2(bracketSize);
 
@@ -85,7 +129,7 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     // Compute final synced state before any DB write — eliminates second-pass updates
     const synced = syncBracketProgression(rawMatches, totalRondas);
-    const seedUpdates = ranking.map((entry, idx) => ({ id: entry.pareja.id, seed: idx + 1 }));
+    const seedUpdates = rankedPairs.map((pair, idx) => ({ id: pair.id, seed: idx + 1 }));
 
     // Single transaction: only DB writes, no heavy computation
     const payload = await db.$transaction(async (tx) => {
@@ -109,6 +153,7 @@ export async function POST(request: Request, { params }: RouteParams) {
           ganadorId: match.ganadorId,
           gamesPareja1: match.gamesPareja1,
           gamesPareja2: match.gamesPareja2,
+          walkover: false,
           completado: match.completado,
         })),
       });
