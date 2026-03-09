@@ -52,7 +52,7 @@ export default async function TorneosPage() {
           </Link>
           <Link
             href="/torneos/create"
-            className="inline-flex h-11 items-center justify-center rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-bold text-white transition hover:brightness-110"
+            className="btn-primary inline-flex h-11 items-center justify-center rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-bold text-white transition hover:brightness-110"
           >
             Crear Torneo
           </Link>

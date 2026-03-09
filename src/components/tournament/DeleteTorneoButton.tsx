@@ -64,7 +64,7 @@ export function DeleteTorneoButton({ torneoId, torneoNombre }: DeleteTorneoButto
       </button>
 
       {confirmOpen ? (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[#05080f]/75 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-[var(--overlay)] p-4">
           <div
             role="dialog"
             aria-modal="true"

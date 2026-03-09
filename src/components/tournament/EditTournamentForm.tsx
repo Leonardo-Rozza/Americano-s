@@ -274,7 +274,7 @@ export function EditTournamentForm({
               <button
                 type="button"
                 onClick={confirmSwitchToGeneric}
-                className="rounded-lg border border-[var(--gold)] bg-[var(--gold)] px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] text-[#1f2937]"
+                className="rounded-lg border border-[var(--gold)] bg-[var(--gold)] px-3 py-1 text-xs font-bold uppercase tracking-[0.08em] text-[var(--text-on-gold)]"
               >
                 Confirmar cambio
               </button>
@@ -411,7 +411,7 @@ export function EditTournamentForm({
           <button
             type="submit"
             disabled={!canSubmit}
-            className="h-11 rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-extrabold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+            className="btn-primary h-11 rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-extrabold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
           >
             {submitting ? "Guardando…" : "Guardar cambios"}
           </button>

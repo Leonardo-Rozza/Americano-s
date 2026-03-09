@@ -116,7 +116,7 @@ export function LoginForm({ nextPath }: LoginFormProps) {
       <button
         type="submit"
         disabled={submitting}
-        className="h-11 w-full rounded-xl border border-[var(--accent)] bg-[var(--accent)] text-sm font-extrabold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+        className="btn-primary h-11 w-full rounded-xl border border-[var(--accent)] bg-[var(--accent)] text-sm font-extrabold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
       >
         {submitting ? "Ingresando..." : "Ingresar"}
       </button>

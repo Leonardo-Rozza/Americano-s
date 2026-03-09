@@ -61,7 +61,7 @@ export function TorneoHeader({ torneoId, nombre, fechaISO, parejas, estado }: To
           {estado === "FINALIZADO" ? (
             <Link
               href="/torneos/create"
-              className="inline-flex h-10 items-center rounded-lg border border-[var(--gold)] bg-[var(--gold)] px-3 text-sm font-bold text-[#1f2937] transition hover:brightness-110"
+              className="inline-flex h-10 items-center rounded-lg border border-[var(--gold)] bg-[var(--gold)] px-3 text-sm font-bold text-[var(--text-on-gold)] transition hover:brightness-110"
             >
               Crear otro torneo
             </Link>

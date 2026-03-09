@@ -241,7 +241,7 @@ export function DesempateClient({ torneoId, tiedPairs, byeSlots }: Props) {
           <button
             onClick={confirmSelection}
             disabled={!canConfirm}
-            className="h-11 flex-1 rounded-xl border border-[var(--accent)] bg-[var(--accent)] text-sm font-extrabold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
+            className="btn-primary h-11 flex-1 rounded-xl border border-[var(--accent)] bg-[var(--accent)] text-sm font-extrabold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60"
           >
             Ver resultado
           </button>
@@ -313,7 +313,7 @@ export function DesempateClient({ torneoId, tiedPairs, byeSlots }: Props) {
         <button
           onClick={() => submit(byeWinnerIds)}
           disabled={saving}
-          className="h-11 flex-1 rounded-xl border border-[var(--accent)] bg-[var(--accent)] text-sm font-extrabold text-white transition hover:brightness-110 disabled:opacity-60"
+          className="btn-primary h-11 flex-1 rounded-xl border border-[var(--accent)] bg-[var(--accent)] text-sm font-extrabold text-white transition hover:brightness-110 disabled:opacity-60"
         >
           {saving ? "Guardando…" : "Generar cuadro eliminatorio →"}
         </button>

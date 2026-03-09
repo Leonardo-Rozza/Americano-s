@@ -1,4 +1,5 @@
 import { ToastProvider } from '@/components/ui/ToastProvider';
+import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import type { Metadata } from 'next';
 import { Barlow, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
@@ -72,9 +73,18 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="es">
+    <html lang="es" data-theme="dark" suppressHydrationWarning>
       <body className={`${barlow.variable} ${jetbrainsMono.variable} antialiased`}>
-        <ToastProvider>{children}</ToastProvider>
+        <script
+          dangerouslySetInnerHTML={{
+            __html:
+              "(function(){try{var k='tornea-theme';var t=localStorage.getItem(k);var v=(t==='light'||t==='dark')?t:'dark';document.documentElement.setAttribute('data-theme',v);}catch(_){document.documentElement.setAttribute('data-theme','dark');}})();",
+          }}
+        />
+        <ToastProvider>
+          <ThemeToggle />
+          {children}
+        </ToastProvider>
       </body>
     </html>
   );

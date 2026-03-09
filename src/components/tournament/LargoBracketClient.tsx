@@ -291,7 +291,7 @@ export function LargoBracketClient({
           <div className="mt-3">
             <Link
               href="/torneos/create"
-              className="inline-flex h-10 items-center rounded-lg border border-[var(--gold)] bg-[var(--gold)] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-[#1f2937] transition hover:brightness-110"
+              className="inline-flex h-10 items-center rounded-lg border border-[var(--gold)] bg-[var(--gold)] px-3 text-xs font-extrabold uppercase tracking-[0.08em] text-[var(--text-on-gold)] transition hover:brightness-110"
             >
               Crear otro torneo
             </Link>

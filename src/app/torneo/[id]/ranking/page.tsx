@@ -319,7 +319,7 @@ export default async function RankingPage({ params }: RouteParams) {
           {tiebreakPending ? (
             <Link
               href={`/torneo/${torneo.id}/desempate`}
-              className="inline-flex h-11 items-center rounded-xl border border-[var(--gold)] bg-[var(--gold)] px-4 text-sm font-extrabold text-[#1f2937] transition hover:brightness-110"
+              className="inline-flex h-11 items-center rounded-xl border border-[var(--gold)] bg-[var(--gold)] px-4 text-sm font-extrabold text-[var(--text-on-gold)] transition hover:brightness-110"
             >
               Resolver Empates
             </Link>

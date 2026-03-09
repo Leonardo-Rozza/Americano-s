@@ -299,7 +299,7 @@ export function LargoGroupStageClient({ torneo: initialTorneo, readOnly = false 
         <button
           disabled={!allComplete || loadingRanking}
           onClick={handleRanking}
-          className="h-11 rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-extrabold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:border-[var(--border)] disabled:bg-[var(--surface-2)] disabled:text-[var(--text-dim)]"
+          className="btn-primary h-11 rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-extrabold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:border-[var(--border)] disabled:bg-[var(--surface-2)] disabled:text-[var(--text-dim)]"
         >
           {loadingRanking ? "Calculando…" : "Ver Ranking"}
         </button>

@@ -50,16 +50,16 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
       <div
         aria-live="polite"
         aria-atomic="true"
-        className="pointer-events-none fixed right-4 top-4 z-50 flex w-[min(420px,calc(100vw-2rem))] flex-col gap-2"
+        className="pointer-events-none fixed right-4 top-16 z-50 flex w-[min(420px,calc(100vw-2rem))] flex-col gap-2"
       >
         {toasts.map((toast) => (
           <div
             key={toast.id}
             className={`pointer-events-auto rounded-xl border px-3 py-3 ${
               toast.tone === "error"
-                ? "border-[var(--red)]/60 bg-[#2a1014] text-[var(--text)]"
+                ? "border-[var(--red)]/60 bg-[var(--toast-error-bg)] text-[var(--text)]"
                 : toast.tone === "success"
-                  ? "border-[var(--green)]/60 bg-[#08251f] text-[var(--text)]"
+                  ? "border-[var(--green)]/60 bg-[var(--toast-success-bg)] text-[var(--text)]"
                   : "border-[var(--border)] bg-[var(--surface)] text-[var(--text)]"
             }`}
           >
@@ -71,7 +71,7 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
                     toast.onRetry?.();
                     removeToast(toast.id);
                   }}
-                  className="rounded-md border border-[var(--accent)] bg-[var(--accent)] px-2 py-1 text-xs font-bold text-white"
+                  className="btn-primary rounded-md border border-[var(--accent)] bg-[var(--accent)] px-2 py-1 text-xs font-bold text-white"
                 >
                   {toast.retryLabel ?? "Reintentar"}
                 </button>

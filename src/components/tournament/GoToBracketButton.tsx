@@ -60,7 +60,7 @@ export function GoToBracketButton({ torneoId, hasBracket, className }: GoToBrack
       <button
         onClick={handleClick}
         disabled={loading}
-        className={`h-11 rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-extrabold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 ${className ?? ""}`}
+        className={`btn-primary h-11 rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-extrabold text-white transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-60 ${className ?? ""}`}
       >
         {loading ? "Generando…" : "Ver Cuadro Eliminatorio"}
       </button>

@@ -76,7 +76,7 @@ export default async function DashboardPage() {
         </Link>
         <Link
           href="/torneos/create"
-          className="inline-flex h-11 items-center rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-extrabold text-white transition hover:brightness-110"
+          className="btn-primary inline-flex h-11 items-center rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-extrabold text-white transition hover:brightness-110"
         >
           Crear torneo
         </Link>
