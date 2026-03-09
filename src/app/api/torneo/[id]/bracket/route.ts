@@ -129,46 +129,43 @@ export async function POST(request: Request, { params }: RouteParams) {
 
     // Compute final synced state before any DB write — eliminates second-pass updates
     const synced = syncBracketProgression(rawMatches, totalRondas);
-    const seedUpdates = rankedPairs.map((pair, idx) => ({ id: pair.id, seed: idx + 1 }));
-
     // Single transaction: only DB writes, no heavy computation
-    const payload = await db.$transaction(async (tx) => {
-      if (torneo.bracket) {
-        await tx.bracketMatch.deleteMany({ where: { bracketId: torneo.bracket.id } });
-        await tx.bracket.delete({ where: { id: torneo.bracket.id } });
-      }
+    const payload = await db.$transaction(
+      async (tx) => {
+        if (torneo.bracket) {
+          await tx.bracketMatch.deleteMany({ where: { bracketId: torneo.bracket.id } });
+          await tx.bracket.delete({ where: { id: torneo.bracket.id } });
+        }
 
-      const bracket = await tx.bracket.create({
-        data: { torneoId: id, tamano: bracketSize, totalRondas },
-      });
+        const bracket = await tx.bracket.create({
+          data: { torneoId: id, tamano: bracketSize, totalRondas },
+        });
 
-      await tx.bracketMatch.createMany({
-        data: synced.map((match) => ({
-          bracketId: bracket.id,
-          ronda: match.ronda,
-          posicion: match.posicion,
-          esBye: match.esBye,
-          pareja1Id: match.pareja1Id,
-          pareja2Id: match.pareja2Id,
-          ganadorId: match.ganadorId,
-          gamesPareja1: match.gamesPareja1,
-          gamesPareja2: match.gamesPareja2,
-          walkover: false,
-          completado: match.completado,
-        })),
-      });
+        await tx.bracketMatch.createMany({
+          data: synced.map((match) => ({
+            bracketId: bracket.id,
+            ronda: match.ronda,
+            posicion: match.posicion,
+            esBye: match.esBye,
+            pareja1Id: match.pareja1Id,
+            pareja2Id: match.pareja2Id,
+            ganadorId: match.ganadorId,
+            gamesPareja1: match.gamesPareja1,
+            gamesPareja2: match.gamesPareja2,
+            walkover: false,
+            completado: match.completado,
+          })),
+        });
 
-      for (const { id: parejaId, seed } of seedUpdates) {
-        await tx.pareja.update({ where: { id: parejaId }, data: { seed } });
-      }
+        await tx.torneo.update({ where: { id }, data: { estado: "ELIMINATORIA" } });
 
-      await tx.torneo.update({ where: { id }, data: { estado: "ELIMINATORIA" } });
-
-      return tx.bracket.findUnique({
-        where: { id: bracket.id },
-        include: { matches: { orderBy: [{ ronda: "asc" }, { posicion: "asc" }] } },
-      });
-    });
+        return tx.bracket.findUnique({
+          where: { id: bracket.id },
+          include: { matches: { orderBy: [{ ronda: "asc" }, { posicion: "asc" }] } },
+        });
+      },
+      { maxWait: 10000, timeout: 20000 },
+    );
 
     return ok(payload);
   } catch (error) {
