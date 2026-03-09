@@ -4,11 +4,12 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "prisma generate && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
+    "postinstall": "prisma generate",
     "prisma:generate": "node --env-file=.env ./node_modules/prisma/build/index.js generate",
     "prisma:db:push": "node --env-file=.env ./node_modules/prisma/build/index.js db push",
     "prisma:migrate:deploy": "node --env-file=.env ./node_modules/prisma/build/index.js migrate deploy",
