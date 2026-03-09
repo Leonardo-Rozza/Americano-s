@@ -350,12 +350,12 @@ export function LargoGroupStageClient({ torneo: initialTorneo, readOnly = false 
                       key={match.id}
                       className="rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-3"
                     >
-                      <div className="mb-2 grid grid-cols-[1fr_auto_1fr_auto] items-center gap-2">
-                        <ParejaName name={left} />
+                      <div className="mb-2 grid grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-2 md:grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)_auto]">
+                        <ParejaName name={left} className="text-base" />
                         <span className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--text-dim)]">vs</span>
-                        <ParejaName name={right} className="text-right" />
+                        <ParejaName name={right} className="text-right text-base" />
                         <span
-                          className={`inline-flex h-8 items-center justify-center rounded-md border px-2 text-[10px] font-bold uppercase tracking-[0.06em] ${stateStyle}`}
+                          className={`col-span-3 mt-1 inline-flex h-8 items-center justify-center justify-self-end rounded-md border px-2 text-[10px] font-bold uppercase tracking-[0.06em] md:col-span-1 md:mt-0 ${stateStyle}`}
                         >
                           {stateLabel}
                         </span>

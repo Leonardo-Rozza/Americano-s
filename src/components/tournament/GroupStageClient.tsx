@@ -335,9 +335,12 @@ export function GroupStageClient({ torneo: initialTorneo, readOnly = false }: Gr
                           return (
                             <div
                               key={match.id}
-                              className="grid grid-cols-[1fr_auto_auto_auto_1fr_auto] items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-2"
+                              className="grid grid-cols-[minmax(0,1fr)_auto_auto_auto_minmax(0,1fr)] items-center gap-2 rounded-xl border border-[var(--border)] bg-[var(--surface-2)] p-2 md:grid-cols-[minmax(0,1fr)_auto_auto_auto_minmax(0,1fr)_auto]"
                             >
-                              <ParejaName name={byId[match.pareja1Id]?.nombre ?? "Pareja"} />
+                              <ParejaName
+                                name={byId[match.pareja1Id]?.nombre ?? "Pareja"}
+                                className="text-base"
+                              />
                               <ScoreInput
                                 value={scores[match.id]?.s1 ?? ""}
                                 name={`grupo-${group.id}-${match.id}-p1`}
@@ -367,9 +370,12 @@ export function GroupStageClient({ torneo: initialTorneo, readOnly = false }: Gr
                                 }}
                                 onBlur={() => saveOnBlur(match)}
                               />
-                              <ParejaName name={byId[match.pareja2Id]?.nombre ?? "Pareja"} className="text-right" />
+                              <ParejaName
+                                name={byId[match.pareja2Id]?.nombre ?? "Pareja"}
+                                className="text-right text-base"
+                              />
                               <span
-                                className={`inline-flex h-10 items-center justify-center rounded-lg border px-2 text-[11px] font-bold uppercase tracking-[0.06em] ${stateStyle}`}
+                                className={`col-span-5 mt-1 inline-flex h-8 items-center justify-center justify-self-end rounded-lg border px-2 text-[11px] font-bold uppercase tracking-[0.06em] md:col-span-1 md:mt-0 md:h-10 ${stateStyle}`}
                               >
                                 {stateLabel}
                               </span>
