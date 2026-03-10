@@ -49,4 +49,15 @@ describe("bracket", () => {
     expect(matchWithP1).toBeDefined();
     expect([matchWithP1?.t1?.id, matchWithP1?.t2?.id]).not.toContain("p4");
   });
+
+  it("permite seeding estricto cuando se desactiva la resolucion de conflictos", () => {
+    const pairs = makeParejas(4);
+    const groupRivals = {
+      p1: ["p4"],
+      p4: ["p1"],
+    };
+
+    const rounds = buildBracket(pairs, groupRivals, { strictFirstRoundSeeding: true });
+    expect([rounds[0][0].t1?.id, rounds[0][0].t2?.id]).toEqual(["p1", "p4"]);
+  });
 });

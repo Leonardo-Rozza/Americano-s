@@ -100,12 +100,18 @@ export async function POST(request: Request, { params }: RouteParams) {
       rankedPairs = tiebreakResolution.ranking.map((entry) => entry.pareja);
     }
 
+    const bracketSize = getBracketSize(rankedPairs.length);
+    const useStrictFirstRoundSeeding =
+      rankedPairs.length === bracketSize && (bracketSize === 8 || bracketSize === 16);
     const groupRivals = makeGroupRivals(torneo.grupos);
     const rounds =
       torneo.formato === "LARGO" && largoClassified
-        ? buildLargoBracket(largoClassified, groupRivals)
-        : buildBracket(rankedPairs, groupRivals);
-    const bracketSize = getBracketSize(rankedPairs.length);
+        ? buildLargoBracket(largoClassified, groupRivals, {
+            strictFirstRoundSeeding: useStrictFirstRoundSeeding,
+          })
+        : buildBracket(rankedPairs, groupRivals, {
+            strictFirstRoundSeeding: useStrictFirstRoundSeeding,
+          });
     const totalRondas = Math.log2(bracketSize);
 
     // Build flat match list with placeholder IDs for syncBracketProgression

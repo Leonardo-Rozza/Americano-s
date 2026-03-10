@@ -2,6 +2,9 @@ import { generateSeedOrder } from "./seeding";
 import type { BracketMatch, Pareja } from "./types";
 
 export type GroupRivals = Record<string, string[]>;
+export type BuildBracketOptions = {
+  strictFirstRoundSeeding?: boolean;
+};
 
 function nextPow2(value: number): number {
   if (value <= 1) {
@@ -66,7 +69,11 @@ function tryResolveFirstRoundConflicts(round1: BracketMatch[], groupRivals: Grou
   }
 }
 
-export function buildBracket(rankedParejas: Pareja[], groupRivals: GroupRivals = {}): BracketMatch[][] {
+export function buildBracket(
+  rankedParejas: Pareja[],
+  groupRivals: GroupRivals = {},
+  options: BuildBracketOptions = {},
+): BracketMatch[][] {
   const n = rankedParejas.length;
   if (n === 0) {
     return [];
@@ -93,7 +100,9 @@ export function buildBracket(rankedParejas: Pareja[], groupRivals: GroupRivals =
     });
   }
 
-  tryResolveFirstRoundConflicts(round1, groupRivals);
+  if (!options.strictFirstRoundSeeding) {
+    tryResolveFirstRoundConflicts(round1, groupRivals);
+  }
   rounds.push(round1);
 
   const totalRounds = Math.log2(P);

@@ -1,4 +1,4 @@
-import { buildBracket, type GroupRivals } from "./bracket";
+import { buildBracket, type BuildBracketOptions, type GroupRivals } from "./bracket";
 import { createGroups } from "./groups";
 import {
   getPadelLargoMatchStats,
@@ -261,6 +261,7 @@ export function getLargoClassified(
 export function buildLargoBracket(
   classified: LargoClassified[],
   groupRivals: GroupRivals,
+  options?: BuildBracketOptions,
 ) {
   const ordered = [...classified]
     .sort((a, b) => {
@@ -271,5 +272,5 @@ export function buildLargoBracket(
     })
     .map((item) => item.pareja);
 
-  return buildBracket(ordered, groupRivals);
+  return buildBracket(ordered, groupRivals, options);
 }
