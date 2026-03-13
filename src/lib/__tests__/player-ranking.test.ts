@@ -142,4 +142,44 @@ describe("player ranking", () => {
       semifinales: 1,
     });
   });
+
+  it("trata las categorias intermedias como rankings independientes", () => {
+    const summary = computePlayerRankingByCategory(
+      [
+        {
+          id: "t1",
+          nombre: "Quinta/Sexta 1",
+          fecha: new Date("2026-03-16T10:00:00.000Z"),
+          categoriaPadel: "QUINTA_SEXTA",
+          estado: "FINALIZADO",
+          parejas: [buildCustomPair("p1", "Ana", "Bea"), buildCustomPair("p2", "Carla", "Dani")],
+          bracket: {
+            totalRondas: 1,
+            matches: [
+              { id: "f", ronda: 1, posicion: 0, pareja1Id: "p1", pareja2Id: "p2", ganadorId: "p1", completado: true, esBye: false },
+            ],
+          },
+        },
+        {
+          id: "t2",
+          nombre: "Quinta 1",
+          fecha: new Date("2026-03-17T10:00:00.000Z"),
+          categoriaPadel: "QUINTA",
+          estado: "FINALIZADO",
+          parejas: [buildCustomPair("p3", "Eva", "Flor"), buildCustomPair("p4", "Gina", "Hana")],
+          bracket: {
+            totalRondas: 1,
+            matches: [
+              { id: "f2", ronda: 1, posicion: 0, pareja1Id: "p3", pareja2Id: "p4", ganadorId: "p3", completado: true, esBye: false },
+            ],
+          },
+        },
+      ],
+      "QUINTA_SEXTA",
+    );
+
+    expect(summary.totalFinalizedTournaments).toBe(1);
+    expect(summary.rows.find((row) => row.nombre === "Ana")).toMatchObject({ puntos: 100 });
+    expect(summary.rows.find((row) => row.nombre === "Eva")).toBeUndefined();
+  });
 });

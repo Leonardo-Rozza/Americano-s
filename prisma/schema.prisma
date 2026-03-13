@@ -28,11 +28,15 @@ enum Formato {
 enum CategoriaPadel {
   TERCERA
   CUARTA
+  TERCERA_CUARTA
   QUINTA
   SEXTA
+  QUINTA_SEXTA
   SEPTIMA
+  SEXTA_SEPTIMA
   OCTAVA
   NOVENA
+  OCTAVA_NOVENA
 }
 
 enum EstadoTorneo {

@@ -1,11 +1,15 @@
 export const PADEL_CATEGORY_VALUES = [
   "TERCERA",
   "CUARTA",
+  "TERCERA_CUARTA",
   "QUINTA",
   "SEXTA",
+  "QUINTA_SEXTA",
   "SEPTIMA",
+  "SEXTA_SEPTIMA",
   "OCTAVA",
   "NOVENA",
+  "OCTAVA_NOVENA",
 ] as const;
 
 export type PadelCategory = (typeof PADEL_CATEGORY_VALUES)[number];
@@ -13,11 +17,15 @@ export type PadelCategory = (typeof PADEL_CATEGORY_VALUES)[number];
 const CATEGORY_LABELS: Record<PadelCategory, string> = {
   TERCERA: "3ra",
   CUARTA: "4ta",
+  TERCERA_CUARTA: "3ra / 4ta",
   QUINTA: "5ta",
   SEXTA: "6ta",
+  QUINTA_SEXTA: "5ta / 6ta",
   SEPTIMA: "7ma",
+  SEXTA_SEPTIMA: "6ta / 7ma",
   OCTAVA: "8va",
   NOVENA: "9na",
+  OCTAVA_NOVENA: "8va / 9na",
 };
 
 const CATEGORY_SET = new Set<string>(PADEL_CATEGORY_VALUES);

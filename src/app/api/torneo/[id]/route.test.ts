@@ -100,14 +100,14 @@ describe("PUT /api/torneo/[id] pairMode=GENERIC", () => {
     });
     mockGetTorneoOrThrow.mockResolvedValue({
       id: "torneo-1",
-      categoriaPadel: "SEXTA",
+      categoriaPadel: "SEXTA_SEPTIMA",
     });
 
     const request = new Request("http://localhost/api/torneo/torneo-1", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({
-        categoriaPadel: "SEXTA",
+        categoriaPadel: "SEXTA_SEPTIMA",
       }),
     });
 
@@ -119,7 +119,7 @@ describe("PUT /api/torneo/[id] pairMode=GENERIC", () => {
     expect(payload.success).toBe(true);
     expect(mockTx.torneo.update).toHaveBeenCalledWith({
       where: { id: "torneo-1" },
-      data: { categoriaPadel: "SEXTA" },
+      data: { categoriaPadel: "SEXTA_SEPTIMA" },
     });
   });
 

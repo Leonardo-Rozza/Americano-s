@@ -76,7 +76,7 @@ describe("POST /api/torneo", () => {
         nombre: "Americano Quinta",
         deporte: "PADEL",
         formato: "AMERICANO",
-        categoriaPadel: "QUINTA",
+        categoriaPadel: "QUINTA_SEXTA",
         numParejas: 6,
         pairMode: "GENERIC",
         formatoGrupos: { g3: 2, g4: 0 },
@@ -91,7 +91,7 @@ describe("POST /api/torneo", () => {
       mockTx,
       expect.objectContaining({
         userId: "user-1",
-        categoriaPadel: "QUINTA",
+        categoriaPadel: "QUINTA_SEXTA",
       }),
     );
   });
