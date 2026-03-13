@@ -95,4 +95,35 @@ describe("POST /api/torneo", () => {
       }),
     );
   });
+
+  it("rechaza jugadores repetidos entre distintas parejas", async () => {
+    const request = new Request("http://localhost/api/torneo", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        nombre: "Americano Quinta",
+        deporte: "PADEL",
+        formato: "AMERICANO",
+        categoriaPadel: "QUINTA",
+        numParejas: 6,
+        pairMode: "CUSTOM",
+        parejas: [
+          { jugador1: "Juan", jugador2: "Perez" },
+          { jugador1: "Juan", jugador2: "Lopez" },
+          { jugador1: "Ana", jugador2: "Beto" },
+          { jugador1: "Caro", jugador2: "Dani" },
+          { jugador1: "Ema", jugador2: "Fede" },
+          { jugador1: "Gus", jugador2: "Hugo" },
+        ],
+        formatoGrupos: { g3: 2, g4: 0 },
+      }),
+    });
+
+    const response = await POST(request);
+    const payload = (await response.json()) as { success: boolean; error: string };
+
+    expect(payload.success).toBe(false);
+    expect(payload.error).toContain("Este jugador ya fue cargado en otra pareja");
+    expect(mockDb.$transaction).not.toHaveBeenCalled();
+  });
 });

@@ -106,8 +106,8 @@ export function EditTournamentForm({
       return;
     }
     if (pairMode === "CUSTOM" && invalidCount > 0) {
-      setError("Completa Nombre 1 y Nombre 2 con formato valido en todas las parejas.");
-      showToast({ message: "Revisa los nombres de las parejas personalizadas.", tone: "error" });
+      setError("Revisa los nombres: cada jugador debe ser unico y todas las parejas deben tener formato valido.");
+      showToast({ message: "Hay nombres repetidos o con formato invalido en las parejas.", tone: "error" });
       return;
     }
 
@@ -283,7 +283,9 @@ export function EditTournamentForm({
       {pairMode === "CUSTOM" ? (
         <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
           <p className="mb-1 text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-dim)]">Jugadores por pareja</p>
-          <p className="mb-4 text-sm text-[var(--text-muted)]">Cada pareja debe tener exactamente dos nombres.</p>
+          <p className="mb-4 text-sm text-[var(--text-muted)]">
+            Cada pareja debe tener exactamente dos nombres y un mismo jugador no puede repetirse en otra pareja.
+          </p>
           <div className="space-y-3">
             {parejas.map((pair, idx) => {
               const validation = pairValidation[idx];
@@ -312,7 +314,8 @@ export function EditTournamentForm({
                           )
                         }
                         className={`w-full rounded-lg border px-3 py-2 text-sm text-[var(--text)] outline-none disabled:opacity-70 ${
-                          showErrors && (validation?.missingJugador1 || validation?.invalidJugador1)
+                          showErrors &&
+                          (validation?.missingJugador1 || validation?.invalidJugador1 || validation?.duplicateJugador1)
                             ? "border-[var(--red)] bg-[var(--red)]/10 focus:border-[var(--red)]"
                             : "border-[var(--border)] bg-[var(--surface)] focus:border-[var(--accent)]"
                         }`}
@@ -322,6 +325,11 @@ export function EditTournamentForm({
                       ) : null}
                       {showErrors && validation?.invalidJugador1 ? (
                         <p className="mt-1 text-xs font-semibold text-[var(--red)]">{NAME_FORMAT_HELP}</p>
+                      ) : null}
+                      {showErrors && validation?.duplicateJugador1 ? (
+                        <p className="mt-1 text-xs font-semibold text-[var(--red)]">
+                          Este jugador ya fue cargado en otra pareja.
+                        </p>
                       ) : null}
                     </div>
                     <div>
@@ -344,7 +352,13 @@ export function EditTournamentForm({
                           )
                         }
                         className={`w-full rounded-lg border px-3 py-2 text-sm text-[var(--text)] outline-none disabled:opacity-70 ${
-                          showErrors && (validation?.missingJugador2 || validation?.invalidJugador2 || validation?.samePlayers)
+                          showErrors &&
+                          (
+                            validation?.missingJugador2 ||
+                            validation?.invalidJugador2 ||
+                            validation?.samePlayers ||
+                            validation?.duplicateJugador2
+                          )
                             ? "border-[var(--red)] bg-[var(--red)]/10 focus:border-[var(--red)]"
                             : "border-[var(--border)] bg-[var(--surface)] focus:border-[var(--accent)]"
                         }`}
@@ -354,6 +368,11 @@ export function EditTournamentForm({
                       ) : null}
                       {showErrors && validation?.invalidJugador2 ? (
                         <p className="mt-1 text-xs font-semibold text-[var(--red)]">{NAME_FORMAT_HELP}</p>
+                      ) : null}
+                      {showErrors && validation?.duplicateJugador2 ? (
+                        <p className="mt-1 text-xs font-semibold text-[var(--red)]">
+                          Este jugador ya fue cargado en otra pareja.
+                        </p>
                       ) : null}
                     </div>
                   </div>
@@ -374,8 +393,8 @@ export function EditTournamentForm({
           </div>
           {!readOnly && invalidCount > 0 ? (
             <p className="mt-3 text-sm font-semibold text-[var(--red)]">
-              Hay {invalidCount} pareja{invalidCount === 1 ? "" : "s"} incompleta{invalidCount === 1 ? "" : "s"} o
-              invalida{invalidCount === 1 ? "" : "s"}.
+              Hay {invalidCount} pareja{invalidCount === 1 ? "" : "s"} incompleta{invalidCount === 1 ? "" : "s"},
+              invalida{invalidCount === 1 ? "" : "s"} o repetida{invalidCount === 1 ? "" : "s"}.
             </p>
           ) : null}
         </section>

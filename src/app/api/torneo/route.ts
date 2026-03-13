@@ -5,7 +5,7 @@ import { createTorneoWithGroups, getTorneoOrThrow } from "@/lib/tournament-servi
 import { isValidGroupConfig } from "@/lib/tournament-engine/groups";
 import { isFormatSupportedForSport, isTournamentCombinationEnabled } from "@/lib/tournament-catalog";
 import { requireApiAuth } from "@/lib/auth/require-auth";
-import { addPairValidationIssues } from "@/lib/pair-input";
+import { addDuplicatePlayerIssues, addPairValidationIssues } from "@/lib/pair-input";
 import { PADEL_CATEGORY_VALUES } from "@/lib/padel-category";
 
 const pairInputSchema = z
@@ -54,6 +54,16 @@ const createTorneoSchema = z
           code: z.ZodIssueCode.custom,
           message: "Debes enviar exactamente numParejas parejas en modo personalizado.",
         });
+      }
+
+      if (value.parejas) {
+        addDuplicatePlayerIssues(value.parejas, (index, field, message) =>
+          ctx.addIssue({
+            code: z.ZodIssueCode.custom,
+            path: ["parejas", index, field],
+            message,
+          }),
+        );
       }
     }
 

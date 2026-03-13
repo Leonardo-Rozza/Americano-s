@@ -122,4 +122,26 @@ describe("PUT /api/torneo/[id] pairMode=GENERIC", () => {
       data: { categoriaPadel: "SEXTA" },
     });
   });
+
+  it("rechaza jugadores repetidos entre parejas al editar", async () => {
+    const request = new Request("http://localhost/api/torneo/torneo-1", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        parejas: [
+          { id: "p1", jugador1: "Juan", jugador2: "Perez" },
+          { id: "p2", jugador1: "Juan", jugador2: "Lopez" },
+        ],
+      }),
+    });
+
+    const response = await PUT(request, {
+      params: Promise.resolve({ id: "torneo-1" }),
+    });
+    const payload = (await response.json()) as { success: boolean; error: string };
+
+    expect(payload.success).toBe(false);
+    expect(payload.error).toContain("Este jugador ya fue cargado en otra pareja");
+    expect(mockDb.$transaction).not.toHaveBeenCalled();
+  });
 });

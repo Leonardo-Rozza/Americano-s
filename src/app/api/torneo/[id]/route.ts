@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { ApiError, ok, parseJson, runApiRoute } from "@/lib/api";
 import { getTorneoOrThrow } from "@/lib/tournament-service";
 import {
+  addDuplicatePlayerIssues,
   addPairValidationIssues,
 } from "@/lib/pair-input";
 import {
@@ -60,6 +61,16 @@ const updateTorneoSchema = z
         code: z.ZodIssueCode.custom,
         message: "No debes enviar parejas manuales en modo generico.",
       });
+    }
+
+    if (value.parejas) {
+      addDuplicatePlayerIssues(value.parejas, (index, field, message) =>
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          path: ["parejas", index, field],
+          message,
+        }),
+      );
     }
   });
 

@@ -164,8 +164,8 @@ export function NewTournamentForm() {
 
     if (pairMode === 'CUSTOM' && invalidCount > 0) {
       setSubmitting(false);
-      setError('Completa Nombre 1 y Nombre 2 con formato valido en todas las parejas.');
-      showToast({ message: 'Revisa los nombres de las parejas personalizadas.', tone: 'error' });
+      setError('Revisa los nombres: cada jugador debe ser unico y todas las parejas deben tener formato valido.');
+      showToast({ message: 'Hay nombres repetidos o con formato invalido en las parejas.', tone: 'error' });
       return;
     }
 
@@ -432,7 +432,7 @@ export function NewTournamentForm() {
             Jugadores por pareja
           </p>
           <p className="mb-4 text-sm text-[var(--text-muted)]">
-            Completa Nombre 1 y Nombre 2 para cada pareja.
+            Completa Nombre 1 y Nombre 2 para cada pareja. Un mismo jugador no puede repetirse en otra pareja.
           </p>
 
           <div className="space-y-3">
@@ -464,7 +464,8 @@ export function NewTournamentForm() {
                           )
                         }
                         className={`w-full rounded-lg border px-3 py-2 text-sm text-[var(--text)] outline-none ${
-                          showErrors && (validation?.missingJugador1 || validation?.invalidJugador1)
+                          showErrors &&
+                          (validation?.missingJugador1 || validation?.invalidJugador1 || validation?.duplicateJugador1)
                             ? 'border-[var(--red)] bg-[var(--red)]/10 focus:border-[var(--red)]'
                             : 'border-[var(--border)] bg-[var(--surface)] focus:border-[var(--accent)]'
                         }`}
@@ -474,6 +475,11 @@ export function NewTournamentForm() {
                       ) : null}
                       {showErrors && validation?.invalidJugador1 ? (
                         <p className="mt-1 text-xs font-semibold text-[var(--red)]">{NAME_FORMAT_HELP}</p>
+                      ) : null}
+                      {showErrors && validation?.duplicateJugador1 ? (
+                        <p className="mt-1 text-xs font-semibold text-[var(--red)]">
+                          Este jugador ya fue cargado en otra pareja.
+                        </p>
                       ) : null}
                     </div>
 
@@ -495,7 +501,12 @@ export function NewTournamentForm() {
                         }
                         className={`w-full rounded-lg border px-3 py-2 text-sm text-[var(--text)] outline-none ${
                           showErrors &&
-                          (validation?.missingJugador2 || validation?.invalidJugador2 || validation?.samePlayers)
+                          (
+                            validation?.missingJugador2 ||
+                            validation?.invalidJugador2 ||
+                            validation?.samePlayers ||
+                            validation?.duplicateJugador2
+                          )
                             ? 'border-[var(--red)] bg-[var(--red)]/10 focus:border-[var(--red)]'
                             : 'border-[var(--border)] bg-[var(--surface)] focus:border-[var(--accent)]'
                         }`}
@@ -505,6 +516,11 @@ export function NewTournamentForm() {
                       ) : null}
                       {showErrors && validation?.invalidJugador2 ? (
                         <p className="mt-1 text-xs font-semibold text-[var(--red)]">{NAME_FORMAT_HELP}</p>
+                      ) : null}
+                      {showErrors && validation?.duplicateJugador2 ? (
+                        <p className="mt-1 text-xs font-semibold text-[var(--red)]">
+                          Este jugador ya fue cargado en otra pareja.
+                        </p>
                       ) : null}
                     </div>
                   </div>
@@ -528,7 +544,8 @@ export function NewTournamentForm() {
           {invalidCount > 0 ? (
             <p className="mt-3 text-sm font-semibold text-[var(--red)]">
               Hay {invalidCount} pareja{invalidCount === 1 ? '' : 's'} incompleta
-              {invalidCount === 1 ? '' : 's'} o invalida{invalidCount === 1 ? '' : 's'}.
+              {invalidCount === 1 ? '' : 's'}, invalida{invalidCount === 1 ? '' : 's'} o repetida
+              {invalidCount === 1 ? '' : 's'}.
             </p>
           ) : null}
         </section>

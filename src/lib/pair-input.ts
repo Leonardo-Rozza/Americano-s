@@ -1,3 +1,4 @@
+import { buildPlayerIdentityKey } from "@/lib/player-identity";
 import { areSamePlayers, buildPairName, isValidPlayerName, normalizePlayerName } from "@/lib/pair-utils";
 
 export const NAME_FORMAT_HELP = "Solo letras y espacios. Numero opcional al final (ej: Perez 2).";
@@ -13,6 +14,8 @@ export type PairValidationResult = {
   invalidJugador1: boolean;
   invalidJugador2: boolean;
   samePlayers: boolean;
+  duplicateJugador1: boolean;
+  duplicateJugador2: boolean;
   isValid: boolean;
   preview: string | null;
 };
@@ -46,6 +49,8 @@ export function validatePairInput(pair: PairInput): PairValidationResult {
     invalidJugador1,
     invalidJugador2,
     samePlayers,
+    duplicateJugador1: false,
+    duplicateJugador2: false,
     isValid: !missingJugador1 && !missingJugador2 && !invalidJugador1 && !invalidJugador2 && !samePlayers,
     preview:
       !missingJugador1 && !missingJugador2
@@ -54,8 +59,59 @@ export function validatePairInput(pair: PairInput): PairValidationResult {
   };
 }
 
+function buildDuplicatePlayerFlags(pairs: PairInput[]) {
+  const normalizedPairs = normalizePairInputs(pairs);
+  const duplicateFlags = normalizedPairs.map(() => ({
+    duplicateJugador1: false,
+    duplicateJugador2: false,
+  }));
+  const occurrences = new Map<string, Array<{ index: number; field: keyof PairInput }>>();
+
+  normalizedPairs.forEach((pair, index) => {
+    (["jugador1", "jugador2"] as const).forEach((field) => {
+      const value = pair[field];
+      if (!value || !isValidPlayerName(value)) {
+        return;
+      }
+
+      const key = buildPlayerIdentityKey(value);
+      const current = occurrences.get(key) ?? [];
+      current.push({ index, field });
+      occurrences.set(key, current);
+    });
+  });
+
+  for (const entries of occurrences.values()) {
+    const distinctPairCount = new Set(entries.map((entry) => entry.index)).size;
+    if (distinctPairCount < 2) {
+      continue;
+    }
+
+    for (const entry of entries) {
+      duplicateFlags[entry.index][entry.field === "jugador1" ? "duplicateJugador1" : "duplicateJugador2"] = true;
+    }
+  }
+
+  return duplicateFlags;
+}
+
 export function buildPairValidations(pairs: PairInput[]): PairValidationResult[] {
-  return normalizePairInputs(pairs).map((pair) => validatePairInput(pair));
+  const normalizedPairs = normalizePairInputs(pairs);
+  const duplicateFlags = buildDuplicatePlayerFlags(normalizedPairs);
+
+  return normalizedPairs.map((pair, index) => {
+    const baseValidation = validatePairInput(pair);
+    const duplicateValidation = duplicateFlags[index];
+
+    return {
+      ...baseValidation,
+      ...duplicateValidation,
+      isValid:
+        baseValidation.isValid &&
+        !duplicateValidation.duplicateJugador1 &&
+        !duplicateValidation.duplicateJugador2,
+    };
+  });
 }
 
 export function countInvalidPairInputs(pairs: PairInput[]): number {
@@ -81,3 +137,19 @@ export function addPairValidationIssues(
   }
 }
 
+export function addDuplicatePlayerIssues(
+  pairs: PairInput[],
+  addIssue: (index: number, field: keyof PairInput, message: string) => void,
+) {
+  const duplicateFlags = buildDuplicatePlayerFlags(pairs);
+
+  duplicateFlags.forEach((flags, index) => {
+    if (flags.duplicateJugador1) {
+      addIssue(index, "jugador1", "Este jugador ya fue cargado en otra pareja.");
+    }
+
+    if (flags.duplicateJugador2) {
+      addIssue(index, "jugador2", "Este jugador ya fue cargado en otra pareja.");
+    }
+  });
+}
