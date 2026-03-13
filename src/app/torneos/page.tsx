@@ -2,15 +2,9 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { DeleteTorneoButton } from "@/components/tournament/DeleteTorneoButton";
 import { requirePageAuth } from "@/lib/auth/require-auth";
+import { getTournamentRouteByState } from "@/lib/tournament-routing";
 
 export const dynamic = "force-dynamic";
-
-function routeByEstado(torneoId: string, estado: string) {
-  if (estado === "RANKING") return `/torneo/${torneoId}/ranking`;
-  if (estado === "DESEMPATE") return `/torneo/${torneoId}/desempate`;
-  if (estado === "ELIMINATORIA" || estado === "FINALIZADO") return `/torneo/${torneoId}/bracket`;
-  return `/torneo/${torneoId}/grupos`;
-}
 
 export default async function TorneosPage() {
   const authUser = await requirePageAuth();
@@ -72,7 +66,7 @@ export default async function TorneosPage() {
             className="group rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5 transition hover:border-[var(--accent)]/70 hover:bg-[var(--surface-2)]"
           >
             <div className="mb-3 flex items-center justify-between gap-2">
-              <Link href={routeByEstado(torneo.id, torneo.estado)} className="min-w-0 flex-1">
+              <Link href={getTournamentRouteByState(torneo.id, torneo.estado)} className="min-w-0 flex-1">
                 <h2 className="truncate text-xl font-extrabold text-[var(--text)]">{torneo.nombre}</h2>
               </Link>
               <div className="flex items-center gap-2">
@@ -89,7 +83,7 @@ export default async function TorneosPage() {
             </div>
             <div className="mt-4 flex flex-wrap gap-2">
               <Link
-                href={routeByEstado(torneo.id, torneo.estado)}
+                href={getTournamentRouteByState(torneo.id, torneo.estado)}
                 className="inline-flex h-9 items-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 text-xs font-bold uppercase tracking-[0.08em] text-[var(--text-muted)] transition hover:text-[var(--text)]"
               >
                 Ver

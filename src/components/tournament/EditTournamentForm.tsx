@@ -6,17 +6,17 @@ import { useMemo, useState } from "react";
 import { useToast } from "@/components/ui/ToastProvider";
 import { authFetch } from "@/lib/auth/auth-fetch";
 import {
-  areSamePlayers,
-  buildPairName,
-  isValidPlayerName,
-  normalizePlayerName,
+  buildPairValidations,
+  NAME_FORMAT_HELP,
+  normalizePairInputs,
+} from "@/lib/pair-input";
+import {
   type PairMode,
 } from "@/lib/pair-utils";
+import { getTournamentRouteByState } from "@/lib/tournament-routing";
 
 type Estado = "CONFIGURACION" | "GRUPOS" | "RANKING" | "DESEMPATE" | "ELIMINATORIA" | "FINALIZADO";
 type Metodo = "MONEDA" | "TIEBREAK";
-
-const NAME_FORMAT_HELP = "Solo letras y espacios. Numero opcional al final (ej: Perez 2).";
 
 type Pair = {
   id: string;
@@ -32,13 +32,6 @@ type EditTournamentFormProps = {
   initialParejas: Pair[];
   estado: Estado;
 };
-
-function routeByEstado(torneoId: string, estado: Estado) {
-  if (estado === "RANKING") return `/torneo/${torneoId}/ranking`;
-  if (estado === "DESEMPATE") return `/torneo/${torneoId}/desempate`;
-  if (estado === "ELIMINATORIA" || estado === "FINALIZADO") return `/torneo/${torneoId}/bracket`;
-  return `/torneo/${torneoId}/grupos`;
-}
 
 export function EditTournamentForm({
   torneoId,
@@ -60,37 +53,9 @@ export function EditTournamentForm({
   const [error, setError] = useState<string | null>(null);
 
   const readOnly = estado === "FINALIZADO";
-  const torneoHref = routeByEstado(torneoId, estado);
-  const normalizedParejas = useMemo(
-    () =>
-      parejas.map((pair) => ({
-        ...pair,
-        jugador1: normalizePlayerName(pair.jugador1),
-        jugador2: normalizePlayerName(pair.jugador2),
-      })),
-    [parejas],
-  );
-  const pairValidation = useMemo(
-    () =>
-      normalizedParejas.map((pair) => {
-        const missingJugador1 = pair.jugador1.length === 0;
-        const missingJugador2 = pair.jugador2.length === 0;
-        const invalidJugador1 = !missingJugador1 && !isValidPlayerName(pair.jugador1);
-        const invalidJugador2 = !missingJugador2 && !isValidPlayerName(pair.jugador2);
-        const samePlayers = !missingJugador1 && !missingJugador2 && areSamePlayers(pair.jugador1, pair.jugador2);
-
-        return {
-          missingJugador1,
-          missingJugador2,
-          invalidJugador1,
-          invalidJugador2,
-          samePlayers,
-          isValid: !missingJugador1 && !missingJugador2 && !invalidJugador1 && !invalidJugador2 && !samePlayers,
-          preview: !missingJugador1 && !missingJugador2 ? buildPairName(pair.jugador1, pair.jugador2) : null,
-        };
-      }),
-    [normalizedParejas],
-  );
+  const torneoHref = getTournamentRouteByState(torneoId, estado);
+  const normalizedParejas = useMemo(() => normalizePairInputs(parejas), [parejas]);
+  const pairValidation = useMemo(() => buildPairValidations(normalizedParejas), [normalizedParejas]);
   const invalidCount = pairValidation.filter((pair) => !pair.isValid).length;
   const canSubmit =
     !readOnly &&

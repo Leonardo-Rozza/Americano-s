@@ -27,7 +27,6 @@ export function DesempateClient({ torneoId, tiedPairs, byeSlots }: Props) {
   const { showToast } = useToast();
   const [phase, setPhase] = useState<Phase>("choose");
   const [method, setMethod] = useState<Method | null>(null);
-  const [spinning, setSpinning] = useState(false);
   const [byeWinnerIds, setByeWinnerIds] = useState<string[]>([]);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [saving, setSaving] = useState(false);
@@ -36,14 +35,12 @@ export function DesempateClient({ torneoId, tiedPairs, byeSlots }: Props) {
   async function tossCoin(chosenMethod: Method) {
     setMethod(chosenMethod);
     setPhase("coin-spin");
-    setSpinning(true);
     await new Promise((resolve) => setTimeout(resolve, 2000));
 
     // Sortea exactamente los BYEs disputados (defensivo ante cualquier edge-case).
     const shuffled = [...tiedPairs].sort(() => Math.random() - 0.5);
     setByeWinnerIds(shuffled.slice(0, byeSlots).map((p) => p.id));
 
-    setSpinning(false);
     setPhase("coin-result");
   }
 

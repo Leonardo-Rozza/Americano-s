@@ -1,10 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GroupCard } from "@/components/tournament/GroupCard";
 import { ParejaName } from "@/components/tournament/ParejaName";
 import { ScoreInputLargo } from "@/components/tournament/ScoreInputLargo";
+import { useLatestValueRef } from "@/components/tournament/shared/useLatestValueRef";
+import {
+  getMatchSavePresentation,
+  useMatchSaveState,
+} from "@/components/tournament/shared/useMatchSaveState";
 import { useToast } from "@/components/ui/ToastProvider";
 import { authFetch } from "@/lib/auth/auth-fetch";
 import {
@@ -56,8 +61,6 @@ type LargoGroupStageClientProps = {
   readOnly?: boolean;
 };
 
-type MatchSaveState = "idle" | "dirty" | "saving" | "saved" | "error";
-type MatchSaveStateMap = Record<string, MatchSaveState>;
 type DraftMap = Record<string, PadelLargoScoreDraft>;
 const INCOMPLETE_WARNING_GRACE_MS = 8_000;
 
@@ -85,16 +88,6 @@ function mergeDraftsKeepingDrafts(current: DraftMap, groups: Group[]): DraftMap 
   return next;
 }
 
-function initMatchSaveState(groups: Group[]): MatchSaveStateMap {
-  const out: MatchSaveStateMap = {};
-  for (const group of groups) {
-    for (const match of group.partidos) {
-      out[match.id] = match.completado ? "saved" : "idle";
-    }
-  }
-  return out;
-}
-
 function isComplete(group: Group) {
   return group.partidos.length > 0 && group.partidos.every((match) => match.completado);
 }
@@ -108,39 +101,17 @@ export function LargoGroupStageClient({ torneo: initialTorneo, readOnly = false 
   const { showToast } = useToast();
   const [torneo, setTorneo] = useState(initialTorneo);
   const [drafts, setDrafts] = useState<DraftMap>(() => initDrafts(initialTorneo.grupos));
-  const draftsRef = useRef(drafts);
+  const draftsRef = useLatestValueRef(drafts);
   const draftTouchedAtRef = useRef<Record<string, number>>({});
-  const torneoRef = useRef(torneo);
-  const [matchSaveState, setMatchSaveState] = useState<MatchSaveStateMap>(() =>
-    initMatchSaveState(initialTorneo.grupos),
+  const torneoRef = useLatestValueRef(torneo);
+  const { matchSaveState, setMatchSaveState } = useMatchSaveState(
+    torneo.grupos.flatMap((group) => group.partidos),
   );
   const [savingId, setSavingId] = useState<string | null>(null);
   const [loadingRanking, setLoadingRanking] = useState(false);
 
   const allowSuperTiebreakThirdSet = readAllowSuperTiebreak(torneo.config);
   const allComplete = useMemo(() => torneo.grupos.every(isComplete), [torneo.grupos]);
-
-  useEffect(() => {
-    draftsRef.current = drafts;
-  }, [drafts]);
-
-  useEffect(() => {
-    torneoRef.current = torneo;
-  }, [torneo]);
-
-  useEffect(() => {
-    setMatchSaveState((current) => {
-      const next = { ...current };
-      for (const group of torneo.grupos) {
-        for (const match of group.partidos) {
-          if (!next[match.id]) {
-            next[match.id] = match.completado ? "saved" : "idle";
-          }
-        }
-      }
-      return next;
-    });
-  }, [torneo.grupos]);
 
   function applyOptimisticMatch(current: TorneoData, match: GroupMatch, score: PadelLargoScore): TorneoData {
     const stats = getPadelLargoMatchStats(score);
@@ -318,32 +289,7 @@ export function LargoGroupStageClient({ torneo: initialTorneo, readOnly = false 
                   const right = pairById[match.pareja2Id]?.nombre ?? "Pareja B";
                   const draft = drafts[match.id] ?? createEmptyPadelLargoDraft();
                   const state = matchSaveState[match.id] ?? (match.completado ? "saved" : "idle");
-                  const stateStyle =
-                    readOnly
-                      ? "border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)]"
-                      : state === "saving"
-                        ? "border-[var(--accent)]/60 bg-[var(--accent)]/15 text-[var(--accent)]"
-                        : state === "saved"
-                          ? "border-[var(--green)]/60 bg-[var(--green)]/15 text-[var(--green)]"
-                          : state === "error"
-                            ? "border-[var(--red)]/60 bg-[var(--red)]/15 text-[var(--red)]"
-                            : state === "dirty"
-                              ? "border-[var(--gold)]/60 bg-[var(--gold)]/15 text-[var(--gold)]"
-                              : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-dim)]";
-                  const stateLabel =
-                    readOnly
-                      ? match.completado
-                        ? "Final"
-                        : "Pendiente"
-                      : state === "saving"
-                        ? "Guardando…"
-                        : state === "saved"
-                          ? "Guardado"
-                          : state === "error"
-                            ? "Error"
-                            : state === "dirty"
-                              ? "Sin guardar"
-                              : "Pendiente";
+                  const statePresentation = getMatchSavePresentation(readOnly, state);
 
                   return (
                     <article
@@ -355,9 +301,9 @@ export function LargoGroupStageClient({ torneo: initialTorneo, readOnly = false 
                         <span className="text-xs font-bold uppercase tracking-[0.08em] text-[var(--text-dim)]">vs</span>
                         <ParejaName name={right} className="text-right text-base" />
                         <span
-                          className={`col-span-3 mt-1 inline-flex h-8 items-center justify-center justify-self-end rounded-md border px-2 text-[10px] font-bold uppercase tracking-[0.06em] md:col-span-1 md:mt-0 ${stateStyle}`}
+                          className={`col-span-3 mt-1 inline-flex h-8 items-center justify-center justify-self-end rounded-md border px-2 text-[10px] font-bold uppercase tracking-[0.06em] md:col-span-1 md:mt-0 ${statePresentation.className}`}
                         >
-                          {stateLabel}
+                          {statePresentation.label}
                         </span>
                       </div>
 

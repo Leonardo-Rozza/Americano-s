@@ -1,4 +1,5 @@
 import { type NextRequest, NextResponse } from "next/server";
+import { createApiRequestContext } from "@/lib/api";
 import {
   readCookieFromRequest,
   REFRESH_TOKEN_COOKIE,
@@ -10,6 +11,7 @@ import {
 import { db } from "@/lib/db";
 import { revokeAuthSession, rotateAuthSession } from "@/lib/auth/session";
 import { verifySecret } from "@/lib/auth/password";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/auth/refresh-redirect?next=/ruta
@@ -19,6 +21,7 @@ import { verifySecret } from "@/lib/auth/password";
  * En caso de error, redirige a /login.
  */
 export async function GET(request: NextRequest) {
+  const context = createApiRequestContext(request, "auth.refresh_redirect");
   const rawNext = request.nextUrl.searchParams.get("next");
   const isReasonableLength = typeof rawNext === "string" && rawNext.length <= 1024;
   const next =
@@ -33,7 +36,10 @@ export async function GET(request: NextRequest) {
 
   try {
     const refreshToken = readCookieFromRequest(request, REFRESH_TOKEN_COOKIE);
-    if (!refreshToken) return NextResponse.redirect(loginUrl);
+    if (!refreshToken) {
+      logger.info("auth.refresh_redirect.missing_refresh_token", context);
+      return NextResponse.redirect(loginUrl);
+    }
 
     const payload = await verifyRefreshToken(refreshToken);
 
@@ -43,15 +49,19 @@ export async function GET(request: NextRequest) {
     });
 
     if (!session || !session.user || session.userId !== payload.sub) {
+      logger.warn("auth.refresh_redirect.invalid_session", context);
       return NextResponse.redirect(loginUrl);
     }
+    context.userId = session.user.id;
     if (session.revokedAt || session.expiresAt.getTime() <= Date.now()) {
+      logger.info("auth.refresh_redirect.expired_or_revoked", context);
       return NextResponse.redirect(loginUrl);
     }
 
     const tokenMatches = await verifySecret(refreshToken, session.refreshTokenHash);
     if (!tokenMatches) {
       await revokeAuthSession(session.id);
+      logger.warn("auth.refresh_redirect.token_mismatch", context);
       return NextResponse.redirect(loginUrl);
     }
 
@@ -70,7 +80,11 @@ export async function GET(request: NextRequest) {
     const response = NextResponse.redirect(new URL(next, request.url));
     setAuthCookies(response, accessToken, nextRefreshToken);
     return response;
-  } catch {
+  } catch (error) {
+    logger.warn("auth.refresh_redirect.failed", {
+      ...context,
+      error,
+    });
     return NextResponse.redirect(loginUrl);
   }
 }

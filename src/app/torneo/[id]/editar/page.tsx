@@ -1,8 +1,10 @@
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
 import { EditTournamentForm } from "@/components/tournament/EditTournamentForm";
+import { TorneoHeader } from "@/components/tournament/TorneoHeader";
 import { requirePageAuth } from "@/lib/auth/require-auth";
 import { isGenericPair, resolvePairPlayers } from "@/lib/pair-utils";
+import { toTournamentHeaderProps } from "@/lib/tournament-view";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -17,6 +19,9 @@ export default async function EditTorneoPage({ params }: RouteParams) {
       userId: authUser.userId,
     },
     include: {
+      _count: {
+        select: { parejas: true },
+      },
       parejas: {
         orderBy: { id: "asc" },
         select: { id: true, nombre: true, jugador1: true, jugador2: true },
@@ -36,6 +41,7 @@ export default async function EditTorneoPage({ params }: RouteParams) {
 
   return (
     <section className="space-y-5">
+      <TorneoHeader {...toTournamentHeaderProps(torneo)} />
       <header className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
         <h1 className="text-3xl font-extrabold tracking-tight text-[var(--text)]">Editar Torneo</h1>
         <p className="text-sm text-[var(--text-muted)]">

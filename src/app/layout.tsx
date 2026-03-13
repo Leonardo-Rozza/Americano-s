@@ -1,10 +1,11 @@
 import { ToastProvider } from '@/components/ui/ToastProvider';
+import { appConfig } from '@/lib/config';
 import { ThemeToggle } from '@/components/ui/ThemeToggle';
 import type { Metadata } from 'next';
 import { Barlow, JetBrains_Mono } from 'next/font/google';
 import './globals.css';
 
-const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? 'https://americano-s.vercel.app';
+const siteUrl = appConfig.siteUrl;
 const ogImagePath = '/opengraph-image.jpg?v=20260308';
 
 const barlow = Barlow({

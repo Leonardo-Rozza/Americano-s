@@ -2,13 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { requirePageAuth } from "@/lib/auth/require-auth";
 import { LogoutButton } from "@/components/auth/LogoutButton";
-
-function routeByEstado(torneoId: string, estado: string) {
-  if (estado === "RANKING") return `/torneo/${torneoId}/ranking`;
-  if (estado === "DESEMPATE") return `/torneo/${torneoId}/desempate`;
-  if (estado === "ELIMINATORIA" || estado === "FINALIZADO") return `/torneo/${torneoId}/bracket`;
-  return `/torneo/${torneoId}/grupos`;
-}
+import { getTournamentRouteByState } from "@/lib/tournament-routing";
 
 export const dynamic = "force-dynamic";
 
@@ -55,7 +49,7 @@ export default async function DashboardPage() {
               <p className="text-xl font-extrabold text-[var(--text)]">{lastTorneo.nombre}</p>
               <p className="text-sm text-[var(--text-muted)]">Estado: {lastTorneo.estado}</p>
               <Link
-                href={routeByEstado(lastTorneo.id, lastTorneo.estado)}
+                href={getTournamentRouteByState(lastTorneo.id, lastTorneo.estado)}
                 className="mt-3 inline-flex h-10 items-center rounded-lg border border-[var(--accent)] bg-[var(--accent)]/15 px-3 text-xs font-bold uppercase tracking-[0.08em] text-[var(--text)] transition hover:bg-[var(--accent)]/25"
               >
                 Continuar torneo

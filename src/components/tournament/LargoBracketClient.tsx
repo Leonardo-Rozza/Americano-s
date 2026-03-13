@@ -1,8 +1,13 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useRef, useState } from "react";
 import { ScoreInputLargo } from "@/components/tournament/ScoreInputLargo";
+import { useLatestValueRef } from "@/components/tournament/shared/useLatestValueRef";
+import {
+  getMatchSavePresentation,
+  useMatchSaveState,
+} from "@/components/tournament/shared/useMatchSaveState";
 import { useToast } from "@/components/ui/ToastProvider";
 import { authFetch } from "@/lib/auth/auth-fetch";
 import {
@@ -50,8 +55,6 @@ type LargoBracketClientProps = {
   readOnly?: boolean;
 };
 
-type MatchSaveState = "idle" | "dirty" | "saving" | "saved" | "error";
-type MatchSaveStateMap = Record<string, MatchSaveState>;
 type DraftMap = Record<string, PadelLargoScoreDraft>;
 const INCOMPLETE_WARNING_GRACE_MS = 8_000;
 
@@ -84,14 +87,6 @@ function mergeDraftsKeepingDrafts(current: DraftMap, matches: Match[]): DraftMap
   return next;
 }
 
-function initMatchSaveState(matches: Match[]): MatchSaveStateMap {
-  const out: MatchSaveStateMap = {};
-  for (const match of matches) {
-    out[match.id] = match.completado ? "saved" : "idle";
-  }
-  return out;
-}
-
 export function LargoBracketClient({
   torneoId,
   torneoNombre,
@@ -104,11 +99,11 @@ export function LargoBracketClient({
   const pairById = useMemo(() => Object.fromEntries(pairs.map((pair) => [pair.id, pair])), [pairs]);
   const [bracket, setBracket] = useState(initialBracket);
   const [drafts, setDrafts] = useState<DraftMap>(() => initDrafts(initialBracket.matches));
-  const draftsRef = useRef(drafts);
+  const draftsRef = useLatestValueRef(drafts);
   const draftTouchedAtRef = useRef<Record<string, number>>({});
-  const bracketRef = useRef(bracket);
-  const [matchSaveState, setMatchSaveState] = useState<MatchSaveStateMap>(() =>
-    initMatchSaveState(initialBracket.matches),
+  const bracketRef = useLatestValueRef(bracket);
+  const { matchSaveState, setMatchSaveState } = useMatchSaveState(
+    bracket.matches,
   );
   const [savingMatch, setSavingMatch] = useState<string | null>(null);
 
@@ -125,26 +120,6 @@ export function LargoBracketClient({
 
   const finalMatch = rounds[rounds.length - 1]?.matches[0];
   const champion = finalMatch?.completado && finalMatch.ganadorId ? pairById[finalMatch.ganadorId] : null;
-
-  useEffect(() => {
-    draftsRef.current = drafts;
-  }, [drafts]);
-
-  useEffect(() => {
-    bracketRef.current = bracket;
-  }, [bracket]);
-
-  useEffect(() => {
-    setMatchSaveState((current) => {
-      const next = { ...current };
-      for (const match of bracket.matches) {
-        if (!next[match.id]) {
-          next[match.id] = match.completado ? "saved" : "idle";
-        }
-      }
-      return next;
-    });
-  }, [bracket.matches]);
 
   function applyOptimisticBracket(match: Match, score: PadelLargoScore) {
     const winner = evaluatePadelLargoDraft(toPadelLargoDraft(score), {
@@ -318,32 +293,7 @@ export function LargoBracketClient({
                     const p2 = match.pareja2Id ? pairById[match.pareja2Id] : null;
                     const unresolved = !p1 || !p2;
                     const state = matchSaveState[match.id] ?? (match.completado ? "saved" : "idle");
-                    const stateStyle =
-                      readOnly
-                        ? "border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)]"
-                        : state === "saving"
-                          ? "border-[var(--accent)]/60 bg-[var(--accent)]/15 text-[var(--accent)]"
-                          : state === "saved"
-                            ? "border-[var(--green)]/60 bg-[var(--green)]/15 text-[var(--green)]"
-                            : state === "error"
-                              ? "border-[var(--red)]/60 bg-[var(--red)]/15 text-[var(--red)]"
-                              : state === "dirty"
-                                ? "border-[var(--gold)]/60 bg-[var(--gold)]/15 text-[var(--gold)]"
-                                : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-dim)]";
-                    const stateLabel =
-                      readOnly
-                        ? match.completado
-                          ? "Final"
-                          : "Pendiente"
-                        : state === "saving"
-                          ? "Guardando…"
-                          : state === "saved"
-                            ? "Guardado"
-                            : state === "error"
-                              ? "Error"
-                              : state === "dirty"
-                                ? "Sin guardar"
-                                : "Pendiente";
+                    const statePresentation = getMatchSavePresentation(readOnly, state);
 
                     return (
                       <div key={match.id} style={{ marginTop: matchIndex === 0 ? 0 : gap }}>
@@ -400,9 +350,9 @@ export function LargoBracketClient({
 
                               {!readOnly ? (
                                 <span
-                                  className={`inline-flex h-9 w-full items-center justify-center rounded-lg border text-xs font-bold uppercase tracking-[0.08em] ${stateStyle}`}
+                                  className={`inline-flex h-9 w-full items-center justify-center rounded-lg border text-xs font-bold uppercase tracking-[0.08em] ${statePresentation.className}`}
                                 >
-                                  {stateLabel}
+                                  {statePresentation.label}
                                 </span>
                               ) : null}
                             </div>

@@ -1,7 +1,7 @@
 import { z } from "zod";
 import { Prisma } from "@prisma/client";
 import { db } from "@/lib/db";
-import { ApiError, fromUnknownError, ok, parseJson } from "@/lib/api";
+import { ApiError, ok, parseJson, runApiRoute } from "@/lib/api";
 import { syncBracketProgression } from "@/lib/bracket-progression";
 import { isValidMatchScore } from "@/lib/score-utils";
 import {
@@ -97,126 +97,133 @@ async function reSyncBracket(tx: Prisma.TransactionClient, bracketId: string, to
 }
 
 export async function PUT(request: Request, { params }: RouteParams) {
-  try {
-    const authUser = await requireApiAuth(request);
-    const { id } = await params;
-    const parsed = await parseJson(request, resultSchema);
-    if (!parsed.success) {
-      return parsed.response;
-    }
+  return runApiRoute(
+    request,
+    {
+      operation: "torneo.bracket_result.update",
+      fallbackMessage: "No se pudo guardar el resultado del bracket.",
+    },
+    async (context) => {
+      const authUser = await requireApiAuth(request);
+      context.userId = authUser.userId;
 
-    const payload = await db.$transaction(
-      async (tx) => {
-        const torneo = await tx.torneo.findUnique({
-          where: { id },
-          select: { estado: true, userId: true, formato: true, config: true },
-        });
-        if (!torneo) {
-          throw new ApiError("Torneo no encontrado.", 404);
-        }
-        if (torneo.userId !== authUser.userId) {
-          throw new ApiError("Torneo no encontrado.", 404);
-        }
-        if (torneo.estado === "FINALIZADO") {
-          throw new ApiError("El torneo esta finalizado y es solo lectura.", 409);
-        }
+      const { id } = await params;
+      const parsed = await parseJson(request, resultSchema);
+      if (!parsed.success) {
+        return parsed.response;
+      }
 
-        const match = await tx.bracketMatch.findUnique({
-          where: { id: parsed.data.matchId },
-          include: { bracket: true },
-        });
-        if (!match || match.bracket.torneoId !== id) {
-          throw new ApiError("Match de bracket no encontrado para este torneo.", 404);
-        }
-        if (!match.pareja1Id || !match.pareja2Id) {
-          throw new ApiError("El match todavia no tiene ambas parejas cargadas.", 409);
-        }
-
-        if (torneo.formato === "AMERICANO") {
-          if (!isAmericanoPayload(parsed.data)) {
-            throw new ApiError("Formato de payload invalido para torneo americano.", 400);
-          }
-          if (!isValidMatchScore(parsed.data.gamesPareja1, parsed.data.gamesPareja2)) {
-            throw new ApiError("Resultado invalido. Debe ser 6-x (x entre 0 y 5).", 400);
-          }
-
-          const winnerId =
-            parsed.data.gamesPareja1 > parsed.data.gamesPareja2 ? match.pareja1Id : match.pareja2Id;
-          await tx.bracketMatch.update({
-            where: { id: match.id },
-            data: {
-              gamesPareja1: parsed.data.gamesPareja1,
-              gamesPareja2: parsed.data.gamesPareja2,
-              scoreJson: Prisma.JsonNull,
-              walkover: false,
-              ganadorId: winnerId,
-              completado: true,
-            },
-          });
-        } else if (torneo.formato === "LARGO") {
-          if (!("score" in parsed.data)) {
-            throw new ApiError("Debes enviar score para torneos largos.", 400);
-          }
-
-          const score = parsePadelLargoScore(parsed.data.score);
-          if (!score) {
-            throw new ApiError("Score invalido para torneo largo.", 400);
-          }
-
-          const validation = validatePadelLargoScore(score, {
-            allowSuperTiebreakThirdSet: readAllowSuperTiebreak(torneo.config),
-          });
-          if (!validation.valid) {
-            throw new ApiError(validation.message, 400);
-          }
-
-          const winner = getPadelLargoWinner(score);
-          if (!winner) {
-            throw new ApiError("No se pudo determinar el ganador del partido.", 400);
-          }
-          const stats = getPadelLargoMatchStats(score);
-
-          await tx.bracketMatch.update({
-            where: { id: match.id },
-            data: {
-              gamesPareja1: stats.gamesP1,
-              gamesPareja2: stats.gamesP2,
-              scoreJson: score as Prisma.InputJsonValue,
-              walkover: Boolean(score.walkover),
-              ganadorId: winner === "p1" ? match.pareja1Id : match.pareja2Id,
-              completado: true,
-            },
-          });
-        } else {
-          throw new ApiError("Formato de torneo no soportado.", 409);
-        }
-
-        await reSyncBracket(tx, match.bracketId, match.bracket.totalRondas);
-
-        const finalMatch = await tx.bracketMatch.findFirst({
-          where: {
-            bracketId: match.bracketId,
-            ronda: match.bracket.totalRondas,
-            posicion: 0,
-          },
-        });
-        if (finalMatch?.completado) {
-          await tx.torneo.update({
+      const payload = await db.$transaction(
+        async (tx) => {
+          const torneo = await tx.torneo.findUnique({
             where: { id },
-            data: { estado: "FINALIZADO" },
+            select: { estado: true, userId: true, formato: true, config: true },
           });
-        }
+          if (!torneo) {
+            throw new ApiError("Torneo no encontrado.", 404);
+          }
+          if (torneo.userId !== authUser.userId) {
+            throw new ApiError("Torneo no encontrado.", 404);
+          }
+          if (torneo.estado === "FINALIZADO") {
+            throw new ApiError("El torneo esta finalizado y es solo lectura.", 409);
+          }
 
-        return tx.bracket.findUnique({
-          where: { id: match.bracketId },
-          include: { matches: { orderBy: [{ ronda: "asc" }, { posicion: "asc" }] } },
-        });
-      },
-      { maxWait: 10000, timeout: 20000 },
-    );
+          const match = await tx.bracketMatch.findUnique({
+            where: { id: parsed.data.matchId },
+            include: { bracket: true },
+          });
+          if (!match || match.bracket.torneoId !== id) {
+            throw new ApiError("Match de bracket no encontrado para este torneo.", 404);
+          }
+          if (!match.pareja1Id || !match.pareja2Id) {
+            throw new ApiError("El match todavia no tiene ambas parejas cargadas.", 409);
+          }
 
-    return ok(payload);
-  } catch (error) {
-    return fromUnknownError(error, "No se pudo guardar el resultado del bracket.");
-  }
+          if (torneo.formato === "AMERICANO") {
+            if (!isAmericanoPayload(parsed.data)) {
+              throw new ApiError("Formato de payload invalido para torneo americano.", 400);
+            }
+            if (!isValidMatchScore(parsed.data.gamesPareja1, parsed.data.gamesPareja2)) {
+              throw new ApiError("Resultado invalido. Debe ser 6-x (x entre 0 y 5).", 400);
+            }
+
+            const winnerId =
+              parsed.data.gamesPareja1 > parsed.data.gamesPareja2 ? match.pareja1Id : match.pareja2Id;
+            await tx.bracketMatch.update({
+              where: { id: match.id },
+              data: {
+                gamesPareja1: parsed.data.gamesPareja1,
+                gamesPareja2: parsed.data.gamesPareja2,
+                scoreJson: Prisma.JsonNull,
+                walkover: false,
+                ganadorId: winnerId,
+                completado: true,
+              },
+            });
+          } else if (torneo.formato === "LARGO") {
+            if (!("score" in parsed.data)) {
+              throw new ApiError("Debes enviar score para torneos largos.", 400);
+            }
+
+            const score = parsePadelLargoScore(parsed.data.score);
+            if (!score) {
+              throw new ApiError("Score invalido para torneo largo.", 400);
+            }
+
+            const validation = validatePadelLargoScore(score, {
+              allowSuperTiebreakThirdSet: readAllowSuperTiebreak(torneo.config),
+            });
+            if (!validation.valid) {
+              throw new ApiError(validation.message, 400);
+            }
+
+            const winner = getPadelLargoWinner(score);
+            if (!winner) {
+              throw new ApiError("No se pudo determinar el ganador del partido.", 400);
+            }
+            const stats = getPadelLargoMatchStats(score);
+
+            await tx.bracketMatch.update({
+              where: { id: match.id },
+              data: {
+                gamesPareja1: stats.gamesP1,
+                gamesPareja2: stats.gamesP2,
+                scoreJson: score as Prisma.InputJsonValue,
+                walkover: Boolean(score.walkover),
+                ganadorId: winner === "p1" ? match.pareja1Id : match.pareja2Id,
+                completado: true,
+              },
+            });
+          } else {
+            throw new ApiError("Formato de torneo no soportado.", 409);
+          }
+
+          await reSyncBracket(tx, match.bracketId, match.bracket.totalRondas);
+
+          const finalMatch = await tx.bracketMatch.findFirst({
+            where: {
+              bracketId: match.bracketId,
+              ronda: match.bracket.totalRondas,
+              posicion: 0,
+            },
+          });
+          if (finalMatch?.completado) {
+            await tx.torneo.update({
+              where: { id },
+              data: { estado: "FINALIZADO" },
+            });
+          }
+
+          return tx.bracket.findUnique({
+            where: { id: match.bracketId },
+            include: { matches: { orderBy: [{ ronda: "asc" }, { posicion: "asc" }] } },
+          });
+        },
+        { maxWait: 10000, timeout: 20000 },
+      );
+
+      return ok(payload);
+    },
+  );
 }

@@ -1,10 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { GroupCard } from "@/components/tournament/GroupCard";
 import { ParejaName } from "@/components/tournament/ParejaName";
 import { ScoreInput } from "@/components/tournament/ScoreInput";
+import { useLatestValueRef } from "@/components/tournament/shared/useLatestValueRef";
+import {
+  getMatchSavePresentation,
+  useMatchSaveState,
+} from "@/components/tournament/shared/useMatchSaveState";
 import { useToast } from "@/components/ui/ToastProvider";
 import { authFetch } from "@/lib/auth/auth-fetch";
 import { isValidMatchScore, mergeScoresKeepingDrafts, parseDraftScore } from "@/lib/score-utils";
@@ -51,22 +56,10 @@ type GroupStageClientProps = {
 };
 
 type ScoresMap = Record<string, { s1: string; s2: string }>;
-type MatchSaveState = "idle" | "dirty" | "saving" | "saved" | "error";
-type MatchSaveStateMap = Record<string, MatchSaveState>;
 
 function initScores(groups: Group[]): ScoresMap {
   const out = groups.flatMap((group) => group.partidos);
   return mergeScoresKeepingDrafts({}, out);
-}
-
-function initMatchSaveState(groups: Group[]): MatchSaveStateMap {
-  const out: MatchSaveStateMap = {};
-  for (const group of groups) {
-    for (const match of group.partidos) {
-      out[match.id] = match.completado ? "saved" : "idle";
-    }
-  }
-  return out;
 }
 
 function isComplete(group: Group) {
@@ -78,38 +71,16 @@ export function GroupStageClient({ torneo: initialTorneo, readOnly = false }: Gr
   const { showToast } = useToast();
   const [torneo, setTorneo] = useState(initialTorneo);
   const [scores, setScores] = useState<ScoresMap>(initScores(initialTorneo.grupos));
-  const scoresRef = useRef(scores);
-  const torneoRef = useRef(torneo);
-  const [matchSaveState, setMatchSaveState] = useState<MatchSaveStateMap>(
-    initMatchSaveState(initialTorneo.grupos),
+  const scoresRef = useLatestValueRef(scores);
+  const torneoRef = useLatestValueRef(torneo);
+  const { matchSaveState, setMatchSaveState } = useMatchSaveState(
+    torneo.grupos.flatMap((group) => group.partidos),
   );
   const [savingId, setSavingId] = useState<string | null>(null);
   const [ranking, setRanking] = useState<RankingRow[] | null>(null);
   const [loadingRanking, setLoadingRanking] = useState(false);
 
   const allComplete = useMemo(() => torneo.grupos.every(isComplete), [torneo.grupos]);
-
-  useEffect(() => {
-    scoresRef.current = scores;
-  }, [scores]);
-
-  useEffect(() => {
-    torneoRef.current = torneo;
-  }, [torneo]);
-
-  useEffect(() => {
-    setMatchSaveState((current) => {
-      const next = { ...current };
-      for (const group of torneo.grupos) {
-        for (const match of group.partidos) {
-          if (!next[match.id]) {
-            next[match.id] = match.completado ? "saved" : "idle";
-          }
-        }
-      }
-      return next;
-    });
-  }, [torneo.grupos]);
 
   function applyOptimisticMatch(currentTorneo: TorneoData, match: GroupMatch, s1: number, s2: number): TorneoData {
     return {
@@ -305,32 +276,7 @@ export function GroupStageClient({ torneo: initialTorneo, readOnly = false }: Gr
                       <div className="space-y-2">
                         {section.matches.map((match) => {
                           const state = matchSaveState[match.id] ?? (match.completado ? "saved" : "idle");
-                          const stateStyle =
-                            readOnly
-                              ? "border-[var(--border)] bg-[var(--surface)] text-[var(--text-muted)]"
-                              : state === "saving"
-                              ? "border-[var(--accent)]/60 bg-[var(--accent)]/15 text-[var(--accent)]"
-                              : state === "saved"
-                                ? "border-[var(--green)]/60 bg-[var(--green)]/15 text-[var(--green)]"
-                                : state === "error"
-                                  ? "border-[var(--red)]/60 bg-[var(--red)]/15 text-[var(--red)]"
-                                  : state === "dirty"
-                                    ? "border-[var(--gold)]/60 bg-[var(--gold)]/15 text-[var(--gold)]"
-                                    : "border-[var(--border)] bg-[var(--surface)] text-[var(--text-dim)]";
-                          const stateLabel =
-                            readOnly
-                              ? match.completado
-                                ? "Final"
-                                : "Pendiente"
-                              : state === "saving"
-                              ? "Guardando…"
-                              : state === "saved"
-                                ? "Guardado"
-                                : state === "error"
-                                  ? "Error"
-                                  : state === "dirty"
-                                    ? "Sin guardar"
-                                    : "Pendiente";
+                          const statePresentation = getMatchSavePresentation(readOnly, state);
 
                           return (
                             <div
@@ -375,9 +321,9 @@ export function GroupStageClient({ torneo: initialTorneo, readOnly = false }: Gr
                                 className="text-right text-base"
                               />
                               <span
-                                className={`col-span-5 mt-1 inline-flex h-8 items-center justify-center justify-self-end rounded-lg border px-2 text-[11px] font-bold uppercase tracking-[0.06em] md:col-span-1 md:mt-0 md:h-10 ${stateStyle}`}
+                                className={`col-span-5 mt-1 inline-flex h-8 items-center justify-center justify-self-end rounded-lg border px-2 text-[11px] font-bold uppercase tracking-[0.06em] md:col-span-1 md:mt-0 md:h-10 ${statePresentation.className}`}
                               >
-                                {stateLabel}
+                                {statePresentation.label}
                               </span>
                             </div>
                           );

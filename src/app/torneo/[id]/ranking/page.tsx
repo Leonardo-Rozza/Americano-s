@@ -1,17 +1,15 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { collectGroupResults, resolveRankingWithTiebreak } from "@/lib/tournament-service";
-import {
-  computeLargoRankingByGroup,
-  getLargoClassified,
-  resolveLargoQualifiersByGroupSize,
-} from "@/lib/tournament-engine/largo";
-import { computeRanking, detectTiebreaks } from "@/lib/tournament-engine/ranking";
 import { getBracketSize } from "@/lib/tournament-engine/bracket";
 import { GoToBracketButton } from "@/components/tournament/GoToBracketButton";
+import { TorneoHeader } from "@/components/tournament/TorneoHeader";
 import { requirePageAuth } from "@/lib/auth/require-auth";
-import { resolvePairDisplayName } from "@/lib/pair-utils";
+import {
+  buildAmericanoRankingSnapshot,
+  buildLargoRankingSnapshot,
+  toTournamentHeaderProps,
+} from "@/lib/tournament-view";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -26,6 +24,9 @@ export default async function RankingPage({ params }: RouteParams) {
       userId: authUser.userId,
     },
     include: {
+      _count: {
+        select: { parejas: true },
+      },
       parejas: { orderBy: { nombre: "asc" } },
       grupos: {
         include: {
@@ -43,38 +44,25 @@ export default async function RankingPage({ params }: RouteParams) {
   }
 
   if (torneo.formato === "LARGO" && torneo.deporte === "PADEL") {
-    const groupRankings = computeLargoRankingByGroup(
-      torneo.grupos.map((group) => ({
-        id: group.id,
-        nombre: group.nombre,
-        parejas: group.parejas.map((pair) => ({
-          id: pair.id,
-          nombre: resolvePairDisplayName(pair),
-        })),
-        partidos: group.partidos.map((match) => ({
-          pareja1Id: match.pareja1Id,
-          pareja2Id: match.pareja2Id,
-          completado: match.completado,
-          scoreJson: match.scoreJson,
-        })),
-      })),
-    );
-    const qualifiersByGroupSize = resolveLargoQualifiersByGroupSize(torneo.config);
-    const classified = getLargoClassified(groupRankings, qualifiersByGroupSize);
-    const classifiedSet = new Set(classified.map((item) => item.pareja.id));
+    const largoRanking = buildLargoRankingSnapshot({
+      grupos: torneo.grupos,
+      config: torneo.config,
+    });
+    const classifiedSet = new Set(largoRanking.classified.map((item) => item.pareja.id));
 
     return (
       <section className="space-y-5">
+        <TorneoHeader {...toTournamentHeaderProps(torneo)} />
+
         <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
           <h1 className="text-2xl font-extrabold text-[var(--text)]">Ranking por zonas · Largo</h1>
           <p className="mt-1 text-sm text-[var(--text-muted)]">
-            Clasifican top {qualifiersByGroupSize["4"]} en zonas de 4 y top {qualifiersByGroupSize["3"]} en zonas de
-            3.
+            Clasifican top {largoRanking.qualifiersByGroupSize["4"]} en zonas de 4 y top {largoRanking.qualifiersByGroupSize["3"]} en zonas de 3.
           </p>
         </section>
 
         <div className="grid gap-4">
-          {groupRankings.map((group) => (
+          {largoRanking.groupRankings.map((group) => (
             <section key={group.groupId} className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
               <h2 className="mb-3 text-lg font-extrabold text-[var(--text)]">Zona {group.groupName}</h2>
 
@@ -178,10 +166,10 @@ export default async function RankingPage({ params }: RouteParams) {
         <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
           <div className="grid gap-2 text-sm text-[var(--text-muted)] md:grid-cols-2">
             <p>
-              Clasificados: <span className="font-bold text-[var(--green)]">{classified.length}</span>
+              Clasificados: <span className="font-bold text-[var(--green)]">{largoRanking.classified.length}</span>
             </p>
             <p>
-              Cuadro: <span className="font-bold text-[var(--accent)]">{getBracketSize(classified.length)}</span>
+              Cuadro: <span className="font-bold text-[var(--accent)]">{getBracketSize(largoRanking.classified.length)}</span>
             </p>
           </div>
           <div className="mt-4">
@@ -192,17 +180,18 @@ export default async function RankingPage({ params }: RouteParams) {
     );
   }
 
-  const pairs = torneo.parejas.map((pair) => ({ id: pair.id, nombre: resolvePairDisplayName(pair) }));
-  const ranking = computeRanking(pairs, collectGroupResults(torneo.grupos));
-  const cuadro = getBracketSize(ranking.length);
-  const byes = cuadro - ranking.length;
-  const tiebreaks = detectTiebreaks(ranking, byes);
-  const tiebreakResolution = resolveRankingWithTiebreak(ranking, tiebreaks, torneo.desempates);
-  const rankingRows = tiebreakResolution.ranking;
-  const tiebreakPending = tiebreakResolution.tiebreakPending;
+  const rankingSnapshot = buildAmericanoRankingSnapshot({
+    parejas: torneo.parejas,
+    grupos: torneo.grupos,
+    desempates: torneo.desempates,
+  });
+  const rankingRows = rankingSnapshot.tiebreakResolution?.ranking ?? rankingSnapshot.ranking;
+  const tiebreakPending = rankingSnapshot.tiebreakResolution?.tiebreakPending ?? false;
 
   return (
     <section>
+      <TorneoHeader {...toTournamentHeaderProps(torneo)} />
+
       <section className="overflow-hidden rounded-2xl border border-[var(--border)] bg-[var(--surface)]">
         <div className="hidden md:block">
           <div className="grid grid-cols-[56px_1fr_80px_80px_80px_110px] border-b border-[var(--border)] bg-[var(--surface-2)] px-4 py-3 text-xs font-bold uppercase tracking-[0.12em] text-[var(--text-dim)]">
@@ -216,7 +205,7 @@ export default async function RankingPage({ params }: RouteParams) {
 
           <div className="divide-y divide-[var(--border)]">
             {rankingRows.map((row, idx) => {
-              const hasBye = idx < byes;
+              const hasBye = idx < rankingSnapshot.byes;
               const diffClass =
                 row.diff > 0 ? "text-[var(--green)]" : row.diff < 0 ? "text-[var(--red)]" : "text-[var(--text-dim)]";
 
@@ -253,7 +242,7 @@ export default async function RankingPage({ params }: RouteParams) {
 
         <div className="space-y-2 p-3 md:hidden">
           {rankingRows.map((row, idx) => {
-            const hasBye = idx < byes;
+            const hasBye = idx < rankingSnapshot.byes;
             const diffClass =
               row.diff > 0 ? "text-[var(--green)]" : row.diff < 0 ? "text-[var(--red)]" : "text-[var(--text-dim)]";
 
@@ -302,16 +291,16 @@ export default async function RankingPage({ params }: RouteParams) {
       <section className="mt-5 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
         <div className="grid gap-2 text-sm text-[var(--text-muted)] md:grid-cols-2">
           <p>
-            Parejas: <span className="font-bold text-[var(--text)]">{ranking.length}</span>
+            Parejas: <span className="font-bold text-[var(--text)]">{rankingSnapshot.ranking.length}</span>
           </p>
           <p>
-            Cuadro: <span className="font-bold text-[var(--accent)]">{cuadro}</span>
+            Cuadro: <span className="font-bold text-[var(--accent)]">{rankingSnapshot.bracketSize}</span>
           </p>
           <p>
-            BYEs: <span className="font-bold text-[var(--purple)]">{byes}</span>
+            BYEs: <span className="font-bold text-[var(--purple)]">{rankingSnapshot.byes}</span>
           </p>
           <p>
-            BYE pasan a <span className="font-bold text-[var(--gold)]">{byes}</span>
+            BYE pasan a <span className="font-bold text-[var(--gold)]">{rankingSnapshot.byes}</span>
           </p>
         </div>
 

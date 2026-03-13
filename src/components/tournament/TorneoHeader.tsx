@@ -11,6 +11,7 @@ type TorneoHeaderProps = {
   fechaISO: string;
   parejas: number;
   estado: Estado;
+  publicView?: boolean;
 };
 
 type PhaseConfig = {
@@ -34,7 +35,14 @@ function getCurrentPhase(pathname: string) {
   return "grupos";
 }
 
-export function TorneoHeader({ torneoId, nombre, fechaISO, parejas, estado }: TorneoHeaderProps) {
+export function TorneoHeader({
+  torneoId,
+  nombre,
+  fechaISO,
+  parejas,
+  estado,
+  publicView = false,
+}: TorneoHeaderProps) {
   const pathname = usePathname();
   const current = getCurrentPhase(pathname);
 
@@ -45,28 +53,30 @@ export function TorneoHeader({ torneoId, nombre, fechaISO, parejas, estado }: To
           <p className="text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-dim)]">Torneo</p>
           <h1 className="text-2xl font-extrabold text-[var(--text)] md:text-3xl">{nombre}</h1>
         </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <Link
-            href="/dashboard"
-            className="inline-flex h-10 items-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 text-sm font-bold text-[var(--text)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-          >
-            Dashboard
-          </Link>
-          <Link
-            href="/torneos"
-            className="inline-flex h-10 items-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 text-sm font-bold text-[var(--text)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
-          >
-            Mis torneos
-          </Link>
-          {estado === "FINALIZADO" ? (
+        {publicView ? null : (
+          <div className="flex flex-wrap items-center gap-2">
             <Link
-              href="/torneos/create"
-              className="inline-flex h-10 items-center rounded-lg border border-[var(--gold)] bg-[var(--gold)] px-3 text-sm font-bold text-[var(--text-on-gold)] transition hover:brightness-110"
+              href="/dashboard"
+              className="inline-flex h-10 items-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 text-sm font-bold text-[var(--text)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
             >
-              Crear otro torneo
+              Dashboard
             </Link>
-          ) : null}
-        </div>
+            <Link
+              href="/torneos"
+              className="inline-flex h-10 items-center rounded-lg border border-[var(--border)] bg-[var(--surface-2)] px-3 text-sm font-bold text-[var(--text)] transition hover:border-[var(--accent)] hover:text-[var(--accent)]"
+            >
+              Mis torneos
+            </Link>
+            {estado === "FINALIZADO" ? (
+              <Link
+                href="/torneos/create"
+                className="inline-flex h-10 items-center rounded-lg border border-[var(--gold)] bg-[var(--gold)] px-3 text-sm font-bold text-[var(--text-on-gold)] transition hover:brightness-110"
+              >
+                Crear otro torneo
+              </Link>
+            ) : null}
+          </div>
+        )}
       </div>
 
       <div className="mb-4 grid gap-2 text-sm text-[var(--text-muted)] md:grid-cols-3">
@@ -84,32 +94,34 @@ export function TorneoHeader({ torneoId, nombre, fechaISO, parejas, estado }: To
         </p>
       </div>
 
-      <nav className="overflow-x-auto pb-1">
-        <ol className="flex min-w-max items-center gap-2">
-          {PHASES.map((phase, idx) => {
-            const href = `/torneo/${torneoId}/${phase.path}`;
-            const active = phase.key === current;
-            const unlocked = phase.states.includes(estado);
-            return (
-              <li key={phase.key} className="flex items-center gap-2">
-                <Link
-                  href={href}
-                  className={`rounded-lg border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] transition ${
-                    active
-                      ? "border-[var(--accent)] bg-[var(--accent)]/20 text-[var(--text)]"
-                      : unlocked
-                        ? "border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--text)]"
-                        : "border-[var(--border)]/60 bg-transparent text-[var(--text-dim)]"
-                  }`}
-                >
-                  {phase.label}
-                </Link>
-                {idx < PHASES.length - 1 ? <span className="text-[var(--text-dim)]">→</span> : null}
-              </li>
-            );
-          })}
-        </ol>
-      </nav>
+      {publicView ? null : (
+        <nav className="overflow-x-auto pb-1">
+          <ol className="flex min-w-max items-center gap-2">
+            {PHASES.map((phase, idx) => {
+              const href = `/torneo/${torneoId}/${phase.path}`;
+              const active = phase.key === current;
+              const unlocked = phase.states.includes(estado);
+              return (
+                <li key={phase.key} className="flex items-center gap-2">
+                  <Link
+                    href={href}
+                    className={`rounded-lg border px-3 py-1.5 text-xs font-bold uppercase tracking-[0.08em] transition ${
+                      active
+                        ? "border-[var(--accent)] bg-[var(--accent)]/20 text-[var(--text)]"
+                        : unlocked
+                          ? "border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-muted)] hover:text-[var(--text)]"
+                          : "border-[var(--border)]/60 bg-transparent text-[var(--text-dim)]"
+                    }`}
+                  >
+                    {phase.label}
+                  </Link>
+                  {idx < PHASES.length - 1 ? <span className="text-[var(--text-dim)]">→</span> : null}
+                </li>
+              );
+            })}
+          </ol>
+        </nav>
+      )}
     </header>
   );
 }

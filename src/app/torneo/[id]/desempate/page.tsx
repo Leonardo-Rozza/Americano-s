@@ -1,11 +1,9 @@
 import { notFound, redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { collectGroupResults } from "@/lib/tournament-service";
-import { computeRanking, detectTiebreaks } from "@/lib/tournament-engine/ranking";
-import { getBracketSize } from "@/lib/tournament-engine/bracket";
 import { DesempateClient } from "@/components/tournament/DesempateClient";
+import { TorneoHeader } from "@/components/tournament/TorneoHeader";
 import { requirePageAuth } from "@/lib/auth/require-auth";
-import { resolvePairDisplayName } from "@/lib/pair-utils";
+import { buildAmericanoRankingSnapshot, toTournamentHeaderProps } from "@/lib/tournament-view";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -17,6 +15,9 @@ export default async function DesempatePage({ params }: RouteParams) {
   const torneo = await db.torneo.findFirst({
     where: { id, userId: authUser.userId },
     include: {
+      _count: {
+        select: { parejas: true },
+      },
       parejas: true,
       grupos: { include: { partidos: true } },
     },
@@ -26,10 +27,12 @@ export default async function DesempatePage({ params }: RouteParams) {
     notFound();
   }
 
-  const pairs = torneo.parejas.map((pair) => ({ id: pair.id, nombre: resolvePairDisplayName(pair) }));
-  const ranking = computeRanking(pairs, collectGroupResults(torneo.grupos));
-  const byes = getBracketSize(pairs.length) - pairs.length;
-  const tiebreaks = detectTiebreaks(ranking, byes);
+  const rankingSnapshot = buildAmericanoRankingSnapshot({
+    parejas: torneo.parejas,
+    grupos: torneo.grupos,
+  });
+  const ranking = rankingSnapshot.ranking;
+  const tiebreaks = rankingSnapshot.tiebreaks;
 
   if (!tiebreaks || tiebreaks.parejas.length < 2) {
     redirect(`/torneo/${id}/ranking`);
@@ -49,6 +52,7 @@ export default async function DesempatePage({ params }: RouteParams) {
 
   return (
     <section>
+      <TorneoHeader {...toTournamentHeaderProps(torneo)} />
       <DesempateClient
         torneoId={id}
         tiedPairs={tiedPairsWithStats}

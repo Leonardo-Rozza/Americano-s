@@ -1,5 +1,6 @@
 import { jwtVerify, SignJWT, type JWTPayload } from "jose";
 import type { NextResponse } from "next/server";
+import { appConfig, getJwtSecret } from "@/lib/config";
 
 const JWT_ALGORITHM = "HS256";
 
@@ -8,9 +9,6 @@ export const REFRESH_TOKEN_COOKIE = "refresh_token";
 
 export const ACCESS_TOKEN_TTL_SECONDS = 60 * 60;        // 1 hora
 export const REFRESH_TOKEN_TTL_SECONDS = 60 * 60 * 5;  // 5 horas
-
-const JWT_ISSUER = process.env.JWT_ISSUER ?? "torneos-americanos";
-const JWT_AUDIENCE = process.env.JWT_AUDIENCE ?? "torneos-americanos-app";
 
 type AccessTokenClaims = {
   username: string;
@@ -33,7 +31,7 @@ export type RefreshTokenPayload = JWTPayload &
   };
 
 function jwtSecret(): Uint8Array {
-  const secret = process.env.JWT_SECRET;
+  const secret = getJwtSecret();
   if (!secret || secret.length < 32) {
     throw new Error("JWT_SECRET no configurado o demasiado corto. Debe tener al menos 32 caracteres.");
   }
@@ -51,8 +49,8 @@ export async function signAccessToken(input: { userId: string; username: string 
     type: "access",
   })
     .setProtectedHeader({ alg: JWT_ALGORITHM, typ: "JWT" })
-    .setIssuer(JWT_ISSUER)
-    .setAudience(JWT_AUDIENCE)
+    .setIssuer(appConfig.auth.jwtIssuer)
+    .setAudience(appConfig.auth.jwtAudience)
     .setSubject(input.userId)
     .setIssuedAt(now)
     .setNotBefore(now)
@@ -68,8 +66,8 @@ export async function signRefreshToken(input: { userId: string; sessionId: strin
     type: "refresh",
   })
     .setProtectedHeader({ alg: JWT_ALGORITHM, typ: "JWT" })
-    .setIssuer(JWT_ISSUER)
-    .setAudience(JWT_AUDIENCE)
+    .setIssuer(appConfig.auth.jwtIssuer)
+    .setAudience(appConfig.auth.jwtAudience)
     .setSubject(input.userId)
     .setIssuedAt(now)
     .setNotBefore(now)
@@ -84,8 +82,8 @@ async function verifyToken<T extends "access" | "refresh">(
 ): Promise<T extends "access" ? AccessTokenPayload : RefreshTokenPayload> {
   const { payload, protectedHeader } = await jwtVerify(token, jwtSecret(), {
     algorithms: [JWT_ALGORITHM],
-    issuer: JWT_ISSUER,
-    audience: JWT_AUDIENCE,
+    issuer: appConfig.auth.jwtIssuer,
+    audience: appConfig.auth.jwtAudience,
   });
 
   if (protectedHeader.alg !== JWT_ALGORITHM) {

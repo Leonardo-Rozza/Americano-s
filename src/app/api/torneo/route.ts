@@ -1,11 +1,11 @@
 import { z } from "zod";
 import { db } from "@/lib/db";
-import { fail, fromUnknownError, ok, parseJson } from "@/lib/api";
+import { fail, ok, parseJson, runApiRoute } from "@/lib/api";
 import { createTorneoWithGroups, getTorneoOrThrow } from "@/lib/tournament-service";
 import { isValidGroupConfig } from "@/lib/tournament-engine/groups";
 import { isFormatSupportedForSport, isTournamentCombinationEnabled } from "@/lib/tournament-catalog";
-import { areSamePlayers, isValidPlayerName } from "@/lib/pair-utils";
 import { requireApiAuth } from "@/lib/auth/require-auth";
+import { addPairValidationIssues } from "@/lib/pair-input";
 
 const pairInputSchema = z
   .object({
@@ -14,27 +14,13 @@ const pairInputSchema = z
   })
   .strict()
   .superRefine((value, ctx) => {
-    if (!isValidPlayerName(value.jugador1)) {
+    addPairValidationIssues(value, (field, message) =>
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
-        path: ["jugador1"],
-        message: "Nombre 1 tiene formato invalido.",
-      });
-    }
-    if (!isValidPlayerName(value.jugador2)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["jugador2"],
-        message: "Nombre 2 tiene formato invalido.",
-      });
-    }
-    if (areSamePlayers(value.jugador1, value.jugador2)) {
-      ctx.addIssue({
-        code: z.ZodIssueCode.custom,
-        path: ["jugador2"],
-        message: "Nombre 1 y Nombre 2 no pueden ser iguales.",
-      });
-    }
+        path: [field],
+        message,
+      }),
+    );
   });
 
 const createTorneoSchema = z
@@ -106,35 +92,42 @@ const createTorneoSchema = z
   });
 
 export async function POST(request: Request) {
-  try {
-    const authUser = await requireApiAuth(request);
-    const parsed = await parseJson(request, createTorneoSchema);
-    if (!parsed.success) {
-      return parsed.response;
-    }
+  return runApiRoute(
+    request,
+    {
+      operation: "torneo.create",
+      fallbackMessage: "No se pudo crear el torneo.",
+    },
+    async (context) => {
+      const authUser = await requireApiAuth(request);
+      context.userId = authUser.userId;
 
-    const torneoId = await db.$transaction(
-      (tx) =>
-        createTorneoWithGroups(tx, {
-          userId: authUser.userId,
-          nombre: parsed.data.nombre,
-          numParejas: parsed.data.numParejas,
-          metodoDesempate: parsed.data.metodoDesempate,
-          pairMode: parsed.data.pairMode,
-          pairPlayers: parsed.data.parejas,
-          config: parsed.data.config,
-          groupConfig: parsed.data.formatoGrupos,
-          deporte: parsed.data.deporte,
-          formato: parsed.data.formato,
-        }),
-      { maxWait: 10000, timeout: 20000 },
-    );
+      const parsed = await parseJson(request, createTorneoSchema);
+      if (!parsed.success) {
+        return parsed.response;
+      }
 
-    const torneo = await getTorneoOrThrow(db, torneoId, authUser.userId);
-    return ok(torneo, 201);
-  } catch (error) {
-    return fromUnknownError(error, "No se pudo crear el torneo.");
-  }
+      const torneoId = await db.$transaction(
+        (tx) =>
+          createTorneoWithGroups(tx, {
+            userId: authUser.userId,
+            nombre: parsed.data.nombre,
+            numParejas: parsed.data.numParejas,
+            metodoDesempate: parsed.data.metodoDesempate,
+            pairMode: parsed.data.pairMode,
+            pairPlayers: parsed.data.parejas,
+            config: parsed.data.config,
+            groupConfig: parsed.data.formatoGrupos,
+            deporte: parsed.data.deporte,
+            formato: parsed.data.formato,
+          }),
+        { maxWait: 10000, timeout: 20000 },
+      );
+
+      const torneo = await getTorneoOrThrow(db, torneoId, authUser.userId);
+      return ok(torneo, 201);
+    },
+  );
 }
 
 export async function GET() {

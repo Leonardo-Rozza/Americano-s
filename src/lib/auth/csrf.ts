@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api";
+import { appConfig } from "@/lib/config";
 
 const SAFE_METHODS = new Set(["GET", "HEAD", "OPTIONS"]);
 const SAME_SITE_VALUES = new Set(["same-origin", "same-site", "none"]);
@@ -30,13 +31,10 @@ function resolveAllowedOrigins(request: Request): Set<string> {
     allowedOrigins.add(expectedOrigin);
   }
 
-  const fromEnv = process.env.AUTH_ALLOWED_ORIGINS;
-  if (fromEnv) {
-    for (const item of fromEnv.split(",")) {
-      const normalized = normalizeOrigin(item.trim());
-      if (normalized) {
-        allowedOrigins.add(normalized);
-      }
+  for (const item of appConfig.auth.allowedOrigins) {
+    const normalized = normalizeOrigin(item);
+    if (normalized) {
+      allowedOrigins.add(normalized);
     }
   }
 

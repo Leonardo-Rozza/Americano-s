@@ -1,4 +1,5 @@
 import { ApiError } from "@/lib/api";
+import { appConfig } from "@/lib/config";
 
 type LoginRateLimitState = {
   attempts: number;
@@ -10,20 +11,9 @@ declare global {
   var __loginRateLimitStore__: Map<string, LoginRateLimitState> | undefined;
 }
 
-function parsePositiveInt(rawValue: string | undefined, fallback: number): number {
-  if (!rawValue) {
-    return fallback;
-  }
-  const parsed = Number.parseInt(rawValue, 10);
-  if (!Number.isFinite(parsed) || parsed <= 0) {
-    return fallback;
-  }
-  return parsed;
-}
-
-const RATE_LIMIT_WINDOW_MS = parsePositiveInt(process.env.LOGIN_RATE_LIMIT_WINDOW_MS, 10 * 60 * 1000);
-const RATE_LIMIT_MAX_ATTEMPTS = parsePositiveInt(process.env.LOGIN_RATE_LIMIT_MAX_ATTEMPTS, 8);
-const RATE_LIMIT_BLOCK_MS = parsePositiveInt(process.env.LOGIN_RATE_LIMIT_BLOCK_MS, 15 * 60 * 1000);
+const RATE_LIMIT_WINDOW_MS = appConfig.auth.loginRateLimit.windowMs;
+const RATE_LIMIT_MAX_ATTEMPTS = appConfig.auth.loginRateLimit.maxAttempts;
+const RATE_LIMIT_BLOCK_MS = appConfig.auth.loginRateLimit.blockMs;
 const RATE_LIMIT_MAX_KEYS = 10_000;
 
 const rateLimitStore = globalThis.__loginRateLimitStore__ ?? new Map<string, LoginRateLimitState>();

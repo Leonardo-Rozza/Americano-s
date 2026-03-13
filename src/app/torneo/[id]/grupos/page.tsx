@@ -2,8 +2,9 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { GroupStageClient } from "@/components/tournament/GroupStageClient";
 import { LargoGroupStageClient } from "@/components/tournament/LargoGroupStageClient";
+import { TorneoHeader } from "@/components/tournament/TorneoHeader";
 import { requirePageAuth } from "@/lib/auth/require-auth";
-import { resolvePairDisplayName } from "@/lib/pair-utils";
+import { buildGroupStageView, toTournamentHeaderProps } from "@/lib/tournament-view";
 
 type RouteParams = { params: Promise<{ id: string }> };
 
@@ -19,6 +20,9 @@ export default async function GruposPage({ params }: RouteParams) {
       userId: authUser.userId,
     },
     include: {
+      _count: {
+        select: { parejas: true },
+      },
       grupos: {
         orderBy: { nombre: "asc" },
         include: {
@@ -33,28 +37,27 @@ export default async function GruposPage({ params }: RouteParams) {
     notFound();
   }
 
-  const torneoView = {
+  const torneoView = buildGroupStageView({
     id: torneo.id,
     nombre: torneo.nombre,
     formato: torneo.formato,
     config: (torneo.config as Record<string, unknown> | null) ?? null,
-    grupos: torneo.grupos.map((group) => ({
-      ...group,
-      parejas: group.parejas.map((pair) => ({
-        id: pair.id,
-        nombre: resolvePairDisplayName(pair),
-      })),
-    })),
-  };
+    grupos: torneo.grupos,
+  });
 
   if (torneo.formato === "LARGO" && torneo.deporte === "PADEL") {
-    return <LargoGroupStageClient torneo={torneoView} readOnly={torneo.estado === "FINALIZADO"} />;
+    return (
+      <>
+        <TorneoHeader {...toTournamentHeaderProps(torneo)} />
+        <LargoGroupStageClient torneo={torneoView} readOnly={torneo.estado === "FINALIZADO"} />
+      </>
+    );
   }
 
   return (
-    <GroupStageClient
-      torneo={torneoView}
-      readOnly={torneo.estado === "FINALIZADO"}
-    />
+    <>
+      <TorneoHeader {...toTournamentHeaderProps(torneo)} />
+      <GroupStageClient torneo={torneoView} readOnly={torneo.estado === "FINALIZADO"} />
+    </>
   );
 }
