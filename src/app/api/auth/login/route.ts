@@ -37,7 +37,7 @@ export async function POST(request: Request) {
       }
 
       const rateLimitKey = buildLoginRateLimitKey(request, parsed.data.username);
-      assertLoginAttemptAllowed(rateLimitKey);
+      await assertLoginAttemptAllowed(rateLimitKey);
 
       const user = await db.user.findFirst({
         where: {
@@ -81,7 +81,7 @@ export async function POST(request: Request) {
         userId: user.id,
         refreshToken,
       });
-      clearLoginRateLimit(rateLimitKey);
+      await clearLoginRateLimit(rateLimitKey);
 
       const response = ok({
         user: {

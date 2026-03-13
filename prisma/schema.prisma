@@ -231,6 +231,19 @@ model AuthSession {
   @@index([revokedAt])
 }
 
+model LoginRateLimit {
+  keyHash         String   @id
+  attempts        Int
+  windowStartedAt DateTime
+  blockedUntil    DateTime?
+  expiresAt       DateTime
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  @@index([expiresAt])
+  @@index([blockedUntil])
+}
+
 model Participante {
   id                 String         @id @default(cuid())
   torneoId           String

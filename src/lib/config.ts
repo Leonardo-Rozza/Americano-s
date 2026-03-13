@@ -59,3 +59,7 @@ export const appConfig = {
 export function getJwtSecret() {
   return process.env.JWT_SECRET?.trim() ?? "";
 }
+
+export function getLoginRateLimitSecret() {
+  return process.env.LOGIN_RATE_LIMIT_SECRET?.trim() || getJwtSecret() || "dev-login-rate-limit-secret";
+}
