@@ -4,6 +4,7 @@ import {
   getLargoClassified,
   resolveLargoQualifiersByGroupSize,
 } from "@/lib/tournament-engine/largo";
+import { getPadelCategoryLabel, type PadelCategory } from "@/lib/padel-category";
 import { computeRanking, detectTiebreaks } from "@/lib/tournament-engine/ranking";
 import { resolvePairDisplayName } from "@/lib/pair-utils";
 import { collectGroupResults, resolveRankingWithTiebreak } from "@/lib/tournament-service";
@@ -51,6 +52,7 @@ type TournamentHeaderSource = {
   nombre: string;
   fecha: Date;
   estado: TournamentEstado | string;
+  categoriaPadel?: PadelCategory | null;
   _count: {
     parejas: number;
   };
@@ -151,11 +153,14 @@ export function buildLargoRankingSnapshot<
 }
 
 export function toTournamentHeaderProps(torneo: TournamentHeaderSource) {
+  const categoriaLabel = getPadelCategoryLabel(torneo.categoriaPadel ?? null);
+
   return {
     torneoId: torneo.id,
     nombre: torneo.nombre,
     fechaISO: torneo.fecha.toISOString(),
     parejas: torneo._count.parejas,
     estado: torneo.estado as TournamentEstado,
+    ...(categoriaLabel ? { categoriaLabel } : {}),
   };
 }

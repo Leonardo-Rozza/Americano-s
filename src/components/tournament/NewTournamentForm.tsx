@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useToast } from '@/components/ui/ToastProvider';
 import { authFetch } from '@/lib/auth/auth-fetch';
+import { listPadelCategories, type PadelCategory } from '@/lib/padel-category';
 import {
   buildPairValidations,
   NAME_FORMAT_HELP,
@@ -69,9 +70,11 @@ function pickPreferredGroupConfig(options: GrupoConfig[], formato: PadelFormat) 
 export function NewTournamentForm() {
   const router = useRouter();
   const { showToast } = useToast();
+  const categoryOptions = listPadelCategories();
 
   const [formato, setFormato] = useState<PadelFormat>('AMERICANO');
   const [nombre, setNombre] = useState('Americano');
+  const [categoriaPadel, setCategoriaPadel] = useState<PadelCategory | ''>('');
   const [numParejas, setNumParejas] = useState(12);
   const [groupConfig, setGroupConfig] = useState<GrupoConfig>(() => calcGroups(12));
   const [pairMode, setPairMode] = useState<PairMode>('CUSTOM');
@@ -109,7 +112,7 @@ export function NewTournamentForm() {
   const pairValidation = useMemo(() => buildPairValidations(normalizedParejas), [normalizedParejas]);
 
   const invalidCount = pairValidation.filter((pair) => !pair.isValid).length;
-  const canSubmit = !submitting && (pairMode === 'GENERIC' || invalidCount === 0);
+  const canSubmit = !submitting && categoriaPadel !== '' && (pairMode === 'GENERIC' || invalidCount === 0);
 
   function selectFormat(next: PadelFormat) {
     setFormato(next);
@@ -166,10 +169,18 @@ export function NewTournamentForm() {
       return;
     }
 
+    if (!categoriaPadel) {
+      setSubmitting(false);
+      setError('Elegi la categoria del torneo antes de continuar.');
+      showToast({ message: 'Elegi la categoria del torneo.', tone: 'error' });
+      return;
+    }
+
     const body = {
       nombre: nombre.trim(),
       deporte: 'PADEL' as const,
       formato,
+      categoriaPadel,
       numParejas,
       pairMode,
       ...(pairMode === 'CUSTOM'
@@ -245,7 +256,7 @@ export function NewTournamentForm() {
       </section>
 
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-3">
           <div>
             <label className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-dim)]">
               Nombre del torneo
@@ -256,6 +267,25 @@ export function NewTournamentForm() {
               required
               className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[var(--text)] outline-none focus:border-[var(--accent)]"
             />
+          </div>
+
+          <div>
+            <label className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-dim)]">
+              Que categoria queres hacer
+            </label>
+            <select
+              value={categoriaPadel}
+              onChange={(event) => setCategoriaPadel(event.target.value as PadelCategory | '')}
+              required
+              className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[var(--text)] outline-none focus:border-[var(--accent)]"
+            >
+              <option value="">Elegi una categoria</option>
+              {categoryOptions.map((option) => (
+                <option key={option.value} value={option.value}>
+                  {option.label}
+                </option>
+              ))}
+            </select>
           </div>
 
           <div>

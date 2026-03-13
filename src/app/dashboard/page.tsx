@@ -2,6 +2,7 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { requirePageAuth } from "@/lib/auth/require-auth";
 import { LogoutButton } from "@/components/auth/LogoutButton";
+import { getPadelCategoryLabel } from "@/lib/padel-category";
 import { getTournamentRouteByState } from "@/lib/tournament-routing";
 
 export const dynamic = "force-dynamic";
@@ -47,6 +48,9 @@ export default async function DashboardPage() {
           {lastTorneo ? (
             <div className="mt-2">
               <p className="text-xl font-extrabold text-[var(--text)]">{lastTorneo.nombre}</p>
+              <p className="text-sm text-[var(--text-muted)]">
+                Categoria: {getPadelCategoryLabel(lastTorneo.categoriaPadel) ?? "Sin categoria"}
+              </p>
               <p className="text-sm text-[var(--text-muted)]">Estado: {lastTorneo.estado}</p>
               <Link
                 href={getTournamentRouteByState(lastTorneo.id, lastTorneo.estado)}
@@ -73,6 +77,12 @@ export default async function DashboardPage() {
           className="btn-primary inline-flex h-11 items-center rounded-xl border border-[var(--accent)] bg-[var(--accent)] px-4 text-sm font-extrabold text-white transition hover:brightness-110"
         >
           Crear torneo
+        </Link>
+        <Link
+          href="/ranking/jugadores"
+          className="inline-flex h-11 items-center rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-bold text-[var(--text-muted)] transition hover:text-[var(--text)]"
+        >
+          Ranking jugadores
         </Link>
       </section>
     </main>

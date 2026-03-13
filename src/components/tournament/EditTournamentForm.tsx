@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useMemo, useState } from "react";
 import { useToast } from "@/components/ui/ToastProvider";
 import { authFetch } from "@/lib/auth/auth-fetch";
+import { listPadelCategories, type PadelCategory } from "@/lib/padel-category";
 import {
   buildPairValidations,
   NAME_FORMAT_HELP,
@@ -28,6 +29,7 @@ type EditTournamentFormProps = {
   torneoId: string;
   initialNombre: string;
   initialMetodo: Metodo;
+  initialCategoriaPadel: PadelCategory | null;
   initialPairMode: PairMode;
   initialParejas: Pair[];
   estado: Estado;
@@ -37,14 +39,17 @@ export function EditTournamentForm({
   torneoId,
   initialNombre,
   initialMetodo,
+  initialCategoriaPadel,
   initialPairMode,
   initialParejas,
   estado,
 }: EditTournamentFormProps) {
   const router = useRouter();
   const { showToast } = useToast();
+  const categoryOptions = listPadelCategories();
   const [nombre, setNombre] = useState(initialNombre);
   const [metodo, setMetodo] = useState<Metodo>(initialMetodo);
+  const [categoriaPadel, setCategoriaPadel] = useState<PadelCategory | "">(initialCategoriaPadel ?? "");
   const [pairMode, setPairMode] = useState<PairMode>(initialPairMode);
   const [pendingGenericConfirm, setPendingGenericConfirm] = useState(false);
   const [parejas, setParejas] = useState<Pair[]>(initialParejas);
@@ -61,6 +66,7 @@ export function EditTournamentForm({
     !readOnly &&
     !submitting &&
     !pendingGenericConfirm &&
+    categoriaPadel !== "" &&
     (pairMode === "GENERIC" || invalidCount === 0);
 
   function requestPairMode(next: PairMode) {
@@ -94,6 +100,11 @@ export function EditTournamentForm({
       setError("Confirma o cancela el cambio a parejas genericas antes de guardar.");
       return;
     }
+    if (!categoriaPadel) {
+      setError("Elegi la categoria del torneo antes de guardar.");
+      showToast({ message: "Elegi la categoria del torneo.", tone: "error" });
+      return;
+    }
     if (pairMode === "CUSTOM" && invalidCount > 0) {
       setError("Completa Nombre 1 y Nombre 2 con formato valido en todas las parejas.");
       showToast({ message: "Revisa los nombres de las parejas personalizadas.", tone: "error" });
@@ -109,6 +120,7 @@ export function EditTournamentForm({
         body: JSON.stringify({
           nombre: nombre.trim(),
           metodoDesempate: metodo,
+          categoriaPadel,
           pairMode,
           ...(pairMode === "CUSTOM"
             ? {
@@ -144,6 +156,26 @@ export function EditTournamentForm({
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
+      <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
+        <label className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-dim)]">
+          Categoria del torneo
+        </label>
+        <select
+          value={categoriaPadel}
+          onChange={(event) => setCategoriaPadel(event.target.value as PadelCategory | "")}
+          required
+          disabled={readOnly || submitting}
+          className="w-full rounded-xl border border-[var(--border)] bg-[var(--surface-2)] px-3 py-2 text-[var(--text)] outline-none focus:border-[var(--accent)] disabled:opacity-70"
+        >
+          <option value="">Elegi una categoria</option>
+          {categoryOptions.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+      </section>
+
       <section className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-5">
         <label className="mb-2 block text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-dim)]">
           Nombre del torneo

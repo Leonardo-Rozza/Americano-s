@@ -6,6 +6,7 @@ import { isValidGroupConfig } from "@/lib/tournament-engine/groups";
 import { isFormatSupportedForSport, isTournamentCombinationEnabled } from "@/lib/tournament-catalog";
 import { requireApiAuth } from "@/lib/auth/require-auth";
 import { addPairValidationIssues } from "@/lib/pair-input";
+import { PADEL_CATEGORY_VALUES } from "@/lib/padel-category";
 
 const pairInputSchema = z
   .object({
@@ -28,6 +29,7 @@ const createTorneoSchema = z
     nombre: z.string().trim().min(1, "El nombre es requerido."),
     deporte: z.enum(["PADEL", "FUTBOL", "TENIS"]).default("PADEL"),
     formato: z.enum(["AMERICANO", "LARGO", "LIGA"]).default("AMERICANO"),
+    categoriaPadel: z.enum(PADEL_CATEGORY_VALUES).optional(),
     numParejas: z
       .number()
       .int()
@@ -59,6 +61,14 @@ const createTorneoSchema = z
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "No debes enviar parejas manuales en modo generico.",
+      });
+    }
+
+    if (value.deporte === "PADEL" && !value.categoriaPadel) {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ["categoriaPadel"],
+        message: "Debes elegir una categoria para torneos de padel.",
       });
     }
 
@@ -116,6 +126,7 @@ export async function POST(request: Request) {
             metodoDesempate: parsed.data.metodoDesempate,
             pairMode: parsed.data.pairMode,
             pairPlayers: parsed.data.parejas,
+            categoriaPadel: parsed.data.categoriaPadel,
             config: parsed.data.config,
             groupConfig: parsed.data.formatoGrupos,
             deporte: parsed.data.deporte,

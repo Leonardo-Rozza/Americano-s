@@ -53,6 +53,7 @@ export default async function EditTorneoPage({ params }: RouteParams) {
         torneoId={torneo.id}
         initialNombre={torneo.nombre}
         initialMetodo={torneo.metodoDesempate}
+        initialCategoriaPadel={torneo.categoriaPadel}
         initialPairMode={initialPairMode}
         initialParejas={torneo.parejas.map((pair) => {
           const players = resolvePairPlayers(pair);

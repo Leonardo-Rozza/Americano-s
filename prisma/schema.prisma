@@ -25,6 +25,16 @@ enum Formato {
   LIGA
 }
 
+enum CategoriaPadel {
+  TERCERA
+  CUARTA
+  QUINTA
+  SEXTA
+  SEPTIMA
+  OCTAVA
+  NOVENA
+}
+
 enum EstadoTorneo {
   CONFIGURACION
   GRUPOS
@@ -96,6 +106,7 @@ model Torneo {
   nombre          String
   deporte         Deporte          @default(PADEL)
   formato         Formato          @default(AMERICANO)
+  categoriaPadel  CategoriaPadel?
   config          Json?
   tipo            TipoTorneo
   estado          EstadoTorneo     @default(CONFIGURACION)
@@ -114,7 +125,6 @@ model Torneo {
   partidos        Partido[]
   eventos         EventoPartido[]
   fechas          FechaCompetencia[]
-  categorias      Categoria[]
   rankingConfig   RankingConfig?
 
   @@index([userId, deporte, formato, estado, createdAt])
@@ -248,7 +258,6 @@ model Participante {
   id                 String         @id @default(cuid())
   torneoId           String
   grupoId            String?
-  categoriaId        String?
   nombre             String
   tipo               TipoParticipante
   escudo             String?
@@ -257,7 +266,6 @@ model Participante {
   updatedAt          DateTime       @updatedAt
   torneo             Torneo         @relation(fields: [torneoId], references: [id], onDelete: Cascade)
   grupo              Grupo?         @relation(fields: [grupoId], references: [id], onDelete: SetNull)
-  categoria          Categoria?     @relation(fields: [categoriaId], references: [id], onDelete: SetNull)
   jugadores          Jugador[]
   partidosComoLocal  Partido[]      @relation("PartidoLocal")
   partidosComoVisit  Partido[]      @relation("PartidoVisitante")
@@ -265,7 +273,6 @@ model Participante {
   eventos            EventoPartido[] @relation("EventoPartidoParticipante")
 
   @@index([torneoId, tipo, seed])
-  @@index([torneoId, categoriaId])
 }
 
 model Jugador {
@@ -365,19 +372,6 @@ model FechaCompetencia {
 
   @@unique([torneoId, numero])
   @@index([torneoId, estado, inicio])
-}
-
-model Categoria {
-  id            String         @id @default(cuid())
-  torneoId      String
-  nombre        String
-  nivel         Int
-  createdAt     DateTime       @default(now())
-  updatedAt     DateTime       @updatedAt
-  torneo        Torneo         @relation(fields: [torneoId], references: [id], onDelete: Cascade)
-  participantes Participante[]
-
-  @@index([torneoId, nivel])
 }
 
 model RankingConfig {

@@ -11,6 +11,7 @@ type TorneoHeaderProps = {
   fechaISO: string;
   parejas: number;
   estado: Estado;
+  categoriaLabel?: string | null;
   publicView?: boolean;
 };
 
@@ -41,6 +42,7 @@ export function TorneoHeader({
   fechaISO,
   parejas,
   estado,
+  categoriaLabel = null,
   publicView = false,
 }: TorneoHeaderProps) {
   const pathname = usePathname();
@@ -79,7 +81,7 @@ export function TorneoHeader({
         )}
       </div>
 
-      <div className="mb-4 grid gap-2 text-sm text-[var(--text-muted)] md:grid-cols-3">
+      <div className="mb-4 grid gap-2 text-sm text-[var(--text-muted)] md:grid-cols-4">
         <p>
           Fecha:{" "}
           <span className="font-semibold text-[var(--text)]">
@@ -91,6 +93,9 @@ export function TorneoHeader({
         </p>
         <p>
           Estado: <span className="font-semibold text-[var(--accent)]">{estado}</span>
+        </p>
+        <p>
+          Categoria: <span className="font-semibold text-[var(--text)]">{categoriaLabel ?? "Sin categoria"}</span>
         </p>
       </div>
 

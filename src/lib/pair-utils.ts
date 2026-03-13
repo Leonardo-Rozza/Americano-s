@@ -1,3 +1,7 @@
+import { areSamePlayerIdentity, normalizePlayerName } from "@/lib/player-identity";
+
+export { normalizePlayerName } from "@/lib/player-identity";
+
 const LEGACY_SEPARATORS = [" - ", " / "] as const;
 const GENERIC_PAIR_NAME_REGEX = /^Pareja \d+$/;
 const PLAYER_NAME_REGEX = /^[A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+(?: [A-Za-zÁÉÍÓÚÜÑáéíóúüñ]+)*(?: [0-9]+)?$/;
@@ -9,21 +13,13 @@ export type PairPlayers = {
 
 export type PairMode = "CUSTOM" | "GENERIC";
 
-function collapseWhitespace(value: string) {
-  return value.trim().replace(/\s+/g, " ");
-}
-
-export function normalizePlayerName(value: string) {
-  return collapseWhitespace(value);
-}
-
 export function isValidPlayerName(value: string) {
   const normalized = normalizePlayerName(value);
   return PLAYER_NAME_REGEX.test(normalized);
 }
 
 export function areSamePlayers(jugador1: string, jugador2: string) {
-  return normalizePlayerName(jugador1).toLocaleLowerCase() === normalizePlayerName(jugador2).toLocaleLowerCase();
+  return areSamePlayerIdentity(jugador1, jugador2);
 }
 
 export function buildPairName(jugador1: string, jugador2: string) {
@@ -31,7 +27,7 @@ export function buildPairName(jugador1: string, jugador2: string) {
 }
 
 export function trySplitLegacyPairName(nombre: string) {
-  const cleanName = collapseWhitespace(nombre);
+  const cleanName = normalizePlayerName(nombre);
   if (!cleanName) {
     return null;
   }
@@ -41,7 +37,7 @@ export function trySplitLegacyPairName(nombre: string) {
       continue;
     }
 
-    const parts = cleanName.split(separator).map(collapseWhitespace);
+    const parts = cleanName.split(separator).map(normalizePlayerName);
     if (parts.length !== 2 || parts[0].length === 0 || parts[1].length === 0) {
       continue;
     }

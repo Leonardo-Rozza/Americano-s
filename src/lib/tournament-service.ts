@@ -21,6 +21,7 @@ import type {
   TournamentSport,
 } from "@/lib/tournament-engine/types";
 import { ApiError } from "@/lib/api";
+import type { PadelCategory } from "@/lib/padel-category";
 import { buildGenericPairName, buildPairName, resolvePairDisplayName, type PairMode } from "@/lib/pair-utils";
 
 export const torneoFullInclude = {
@@ -214,6 +215,7 @@ export async function createTorneoWithGroups(
     metodoDesempate: "MONEDA" | "TIEBREAK";
     pairMode: PairMode;
     pairPlayers?: Array<{ jugador1: string; jugador2: string }>;
+    categoriaPadel?: PadelCategory;
     config?: Record<string, unknown>;
     groupConfig?: GrupoConfig;
     deporte?: TournamentSport;
@@ -248,6 +250,7 @@ export async function createTorneoWithGroups(
       nombre: input.nombre,
       deporte,
       formato,
+      categoriaPadel: deporte === "PADEL" ? (input.categoriaPadel ?? undefined) : undefined,
       config: Object.keys(mergedConfig).length > 0 ? (mergedConfig as Prisma.InputJsonValue) : undefined,
       tipo: formato === "LARGO" ? "LARGO" : "AMERICANO",
       estado: "GRUPOS",

@@ -11,6 +11,7 @@ import {
 } from "@/lib/pair-utils";
 import { requireApiAuth } from "@/lib/auth/require-auth";
 import { buildLargoRankingSnapshot } from "@/lib/tournament-view";
+import { PADEL_CATEGORY_VALUES } from "@/lib/padel-category";
 
 type RouteParams = { params: Promise<{ id: string }> };
 const pairUpdateSchema = z
@@ -34,12 +35,13 @@ const updateTorneoSchema = z
   .object({
     nombre: z.string().trim().min(1).optional(),
     metodoDesempate: z.enum(["MONEDA", "TIEBREAK"]).optional(),
+    categoriaPadel: z.enum(PADEL_CATEGORY_VALUES).optional(),
     pairMode: z.enum(["CUSTOM", "GENERIC"]).optional(),
     parejas: z.array(pairUpdateSchema).optional(),
   })
   .strict()
   .superRefine((value, ctx) => {
-    if (!value.nombre && !value.metodoDesempate && !value.parejas && !value.pairMode) {
+    if (!value.nombre && !value.metodoDesempate && !value.categoriaPadel && !value.parejas && !value.pairMode) {
       ctx.addIssue({
         code: z.ZodIssueCode.custom,
         message: "Debes enviar al menos un campo para actualizar.",
@@ -202,12 +204,16 @@ export async function PUT(request: Request, { params }: RouteParams) {
         const torneoData: {
           nombre?: string;
           metodoDesempate?: "MONEDA" | "TIEBREAK";
+          categoriaPadel?: (typeof PADEL_CATEGORY_VALUES)[number];
         } = {};
         if (parsed.data.nombre) {
           torneoData.nombre = parsed.data.nombre;
         }
         if (parsed.data.metodoDesempate) {
           torneoData.metodoDesempate = parsed.data.metodoDesempate;
+        }
+        if (parsed.data.categoriaPadel) {
+          torneoData.categoriaPadel = parsed.data.categoriaPadel;
         }
         if (Object.keys(torneoData).length > 0) {
           await tx.torneo.update({

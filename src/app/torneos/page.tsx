@@ -2,15 +2,28 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { DeleteTorneoButton } from "@/components/tournament/DeleteTorneoButton";
 import { requirePageAuth } from "@/lib/auth/require-auth";
+import { getPadelCategoryLabel, listPadelCategories, parsePadelCategory } from "@/lib/padel-category";
 import { getTournamentRouteByState } from "@/lib/tournament-routing";
 
 export const dynamic = "force-dynamic";
 
-export default async function TorneosPage() {
+type SearchParams = {
+  searchParams: Promise<{
+    categoria?: string;
+  }>;
+};
+
+export default async function TorneosPage({ searchParams }: SearchParams) {
   const authUser = await requirePageAuth();
+  const query = await searchParams;
+  const selectedCategory = parsePadelCategory(query.categoria);
+  const categoryOptions = listPadelCategories();
 
   const torneos = await db.torneo.findMany({
-    where: { userId: authUser.userId },
+    where: {
+      userId: authUser.userId,
+      ...(selectedCategory ? { categoriaPadel: selectedCategory } : {}),
+    },
     orderBy: { createdAt: "desc" },
     include: {
       _count: {
@@ -50,13 +63,50 @@ export default async function TorneosPage() {
           >
             Crear Torneo
           </Link>
+          <Link
+            href="/ranking/jugadores"
+            className="inline-flex h-11 items-center justify-center rounded-xl border border-[var(--border)] bg-[var(--surface)] px-4 text-sm font-bold text-[var(--text-muted)] transition hover:text-[var(--text)]"
+          >
+            Ranking Jugadores
+          </Link>
         </div>
       </header>
+
+      <section className="mb-6 rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-4">
+        <p className="mb-3 text-xs font-bold uppercase tracking-[0.14em] text-[var(--text-dim)]">
+          Filtrar por categoria
+        </p>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/torneos"
+            className={`inline-flex h-9 items-center rounded-lg border px-3 text-xs font-bold uppercase tracking-[0.08em] transition ${
+              !selectedCategory
+                ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--text)]"
+                : "border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-muted)]"
+            }`}
+          >
+            Todas
+          </Link>
+          {categoryOptions.map((option) => (
+            <Link
+              key={option.value}
+              href={`/torneos?categoria=${option.value}`}
+              className={`inline-flex h-9 items-center rounded-lg border px-3 text-xs font-bold uppercase tracking-[0.08em] transition ${
+                selectedCategory === option.value
+                  ? "border-[var(--accent)] bg-[var(--accent)]/15 text-[var(--text)]"
+                  : "border-[var(--border)] bg-[var(--surface-2)] text-[var(--text-muted)]"
+              }`}
+            >
+              {option.label}
+            </Link>
+          ))}
+        </div>
+      </section>
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
         {torneos.length === 0 ? (
           <div className="rounded-2xl border border-[var(--border)] bg-[var(--surface)] p-6 text-[var(--text-muted)] md:col-span-2 xl:col-span-3">
-            No hay torneos creados.
+            {selectedCategory ? "No hay torneos creados para esa categoria." : "No hay torneos creados."}
           </div>
         ) : null}
 
@@ -77,6 +127,12 @@ export default async function TorneosPage() {
               </div>
             </div>
             <div className="space-y-1 text-sm text-[var(--text-muted)]">
+              <p>
+                Categoria:{" "}
+                <span className="font-semibold text-[var(--text)]">
+                  {getPadelCategoryLabel(torneo.categoriaPadel) ?? "Sin categoria"}
+                </span>
+              </p>
               <p>{torneo._count.parejas} parejas</p>
               <p>{torneo._count.grupos} grupos</p>
               <p>{torneo.bracket ? `Cuadro de ${torneo.bracket.tamano}` : "Sin bracket generado"}</p>

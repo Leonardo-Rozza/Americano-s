@@ -91,4 +91,35 @@ describe("PUT /api/torneo/[id] pairMode=GENERIC", () => {
     expect(mockTx.desempate.updateMany).not.toHaveBeenCalled();
     expect(mockGetTorneoOrThrow).toHaveBeenCalledWith(mockDb, "torneo-1", "user-1");
   });
+
+  it("actualiza la categoria del torneo mientras no este finalizado", async () => {
+    mockTx.torneo.findFirst.mockResolvedValue({
+      id: "torneo-1",
+      estado: "GRUPOS",
+      parejas: [],
+    });
+    mockGetTorneoOrThrow.mockResolvedValue({
+      id: "torneo-1",
+      categoriaPadel: "SEXTA",
+    });
+
+    const request = new Request("http://localhost/api/torneo/torneo-1", {
+      method: "PUT",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        categoriaPadel: "SEXTA",
+      }),
+    });
+
+    const response = await PUT(request, {
+      params: Promise.resolve({ id: "torneo-1" }),
+    });
+    const payload = (await response.json()) as { success: boolean };
+
+    expect(payload.success).toBe(true);
+    expect(mockTx.torneo.update).toHaveBeenCalledWith({
+      where: { id: "torneo-1" },
+      data: { categoriaPadel: "SEXTA" },
+    });
+  });
 });
