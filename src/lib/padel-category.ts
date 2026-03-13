@@ -1,3 +1,5 @@
+import type { CategoriaPadel as PrismaCategoriaPadel } from "@prisma/client";
+
 export const PADEL_CATEGORY_VALUES = [
   "TERCERA",
   "CUARTA",
@@ -10,9 +12,9 @@ export const PADEL_CATEGORY_VALUES = [
   "OCTAVA",
   "NOVENA",
   "OCTAVA_NOVENA",
-] as const;
+] as const satisfies readonly PrismaCategoriaPadel[];
 
-export type PadelCategory = (typeof PADEL_CATEGORY_VALUES)[number];
+export type PadelCategory = PrismaCategoriaPadel;
 
 const CATEGORY_LABELS: Record<PadelCategory, string> = {
   TERCERA: "3ra",
